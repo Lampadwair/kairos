@@ -1,7 +1,7 @@
 // Kairos — module « Soirée choisie »
 // Pas de bibliothèque externe : on parle directement aux API REST de Supabase (Auth + RPC).
 'use strict';
-const APP_VER = '1.0.0';
+const APP_VER = '1.0.1';
 const CFG = window.KAIROS_CONFIG || {};
 const URL_BASE = (CFG.supabaseUrl || '').replace(/\/+$/, '');
 const KEY = CFG.supabaseKey || '';
@@ -16,7 +16,8 @@ const store = {
 
 let session = null;      // {access_token, refresh_token, expires_at, user:{email}}
 let data = null;         // réponse de kairos_dashboard
-let signupMode = false;
+let authMode = 'login';     // login | signup | forgot | reset
+let signupAllowed = true;
 
 // ---------------------------------------------------------------- Supabase
 async function api(path, { method = 'POST', body, auth = true } = {}) {
@@ -60,13 +61,54 @@ async function rpc(fn, args = {}) {
   }
 }
 
-// Retour depuis le lien de confirmation d'e-mail (#access_token=…)
+// Retour depuis un lien reçu par e-mail (#access_token=…) : confirmation ou mot de passe oublié
 function readHashSession() {
   if (!location.hash.includes('access_token=')) return false;
   const p = new URLSearchParams(location.hash.slice(1));
   saveSession({ access_token: p.get('access_token'), refresh_token: p.get('refresh_token'), expires_in: +p.get('expires_in') || 3600 });
   history.replaceState(null, '', location.pathname + location.search);
+  if (p.get('type') === 'recovery') authMode = 'reset';
   return true;
+}
+
+// ---------------------------------------------------------------- Connexion
+function setAuthMode(m) {
+  authMode = m;
+  const t = {
+    login:  ['Ta soirée, ton choix.', 'Se connecter', 'Mot de passe'],
+    signup: ['Crée ton compte Kairos.', 'Créer mon compte', 'Mot de passe'],
+    forgot: ['On t\'envoie un lien pour choisir un nouveau mot de passe.', 'Recevoir le lien', ''],
+    reset:  ['Choisis ton nouveau mot de passe.', 'Enregistrer', 'Nouveau mot de passe']
+  }[m];
+  $('authSub').textContent = t[0]; $('authBtn').textContent = t[1]; $('passLabel').textContent = t[2];
+  $('emailField').classList.toggle('hidden', m === 'reset');
+  $('email').required = m !== 'reset';
+  $('passField').classList.toggle('hidden', m === 'forgot');
+  $('password').required = m !== 'forgot';
+  $('password').autocomplete = (m === 'login') ? 'current-password' : 'new-password';
+  $('forgotBtn').classList.toggle('hidden', m !== 'login');
+  $('authSwitch').classList.toggle('hidden', m === 'reset' || (m === 'login' && !signupAllowed));
+  $('authSwitch').textContent = m === 'login' ? 'Pas encore de compte ? Créer un compte' : 'Retour à la connexion';
+  $('authMsg').textContent = ''; $('authMsg').className = 'msg';
+}
+
+function authError(msg) {
+  if (/invalid login|invalid_credentials/i.test(msg)) return 'E-mail ou mot de passe incorrect. Utilise ton compte Hepha, ou « Mot de passe oublié ».';
+  if (/signups? not allowed|signup_disabled/i.test(msg)) return 'Les inscriptions sont fermées : connecte-toi avec ton compte Hepha.';
+  if (/not confirmed|confirm/i.test(msg)) return 'Confirme d\'abord ton e-mail (lien reçu par mail).';
+  if (/rate limit|security purposes|too many/i.test(msg)) return 'Trop de tentatives ou d\'e-mails envoyés. Réessaie dans quelques minutes.';
+  if (/should be different/i.test(msg)) return 'Choisis un mot de passe différent de l\'ancien.';
+  if (/weak|at least|characters/i.test(msg)) return 'Mot de passe trop court (6 caractères minimum).';
+  return msg;
+}
+
+async function loadAuthSettings() {
+  try {
+    const r = await fetch(URL_BASE + '/auth/v1/settings', { headers: { apikey: KEY } });
+    const j = await r.json();
+    signupAllowed = !j.disable_signup;
+  } catch {}
+  if (authMode === 'login') setAuthMode('login');
 }
 
 // ---------------------------------------------------------------- Vues
@@ -263,8 +305,9 @@ function logoutLocal() { session = null; data = null; store.del(LS_SESSION); sto
 function start() {
   if (!URL_BASE || !KEY) return show('setup');
   readHashSession();
+  if (authMode === 'reset') { show('auth'); setAuthMode('reset'); return; }
   session = session || store.get(LS_SESSION);
-  if (!session) return show('auth');
+  if (!session) { show('auth'); setAuthMode(authMode === 'signup' ? 'signup' : 'login'); loadAuthSettings(); return; }
   show('app');
   data = store.get('kairos.cache');
   if (data) { render(); renderSettings(); }
@@ -273,31 +316,31 @@ function start() {
 
 // ---------------------------------------------------------------- Événements
 function wire() {
-  $('authSwitch').addEventListener('click', () => {
-    signupMode = !signupMode;
-    $('authBtn').textContent = signupMode ? 'Créer mon compte' : 'Se connecter';
-    $('authSwitch').textContent = signupMode ? 'Déjà un compte ? Se connecter' : 'Pas encore de compte ? Créer un compte';
-    $('password').autocomplete = signupMode ? 'new-password' : 'current-password';
-    $('authMsg').textContent = '';
-  });
+  $('authSwitch').addEventListener('click', () => setAuthMode(authMode === 'login' ? 'signup' : 'login'));
+  $('forgotBtn').addEventListener('click', () => setAuthMode('forgot'));
   $('authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = $('email').value.trim(), password = $('password').value, msg = $('authMsg');
+    const redirect = encodeURIComponent(location.origin + location.pathname.replace(/index\.html$/, ''));
     msg.className = 'msg'; msg.textContent = '…'; $('authBtn').disabled = true;
     try {
-      if (signupMode) {
-        const redirect = encodeURIComponent(location.origin + location.pathname);
+      if (authMode === 'signup') {
         const r = await api('/auth/v1/signup?redirect_to=' + redirect, { body: { email, password }, auth: false });
         if (r && r.access_token) { saveSession(r); start(); }
         else { msg.className = 'msg ok'; msg.textContent = 'Compte créé. Confirme ton e-mail avec le lien reçu, puis reviens te connecter.'; }
+      } else if (authMode === 'forgot') {
+        await api('/auth/v1/recover?redirect_to=' + redirect, { body: { email }, auth: false });
+        msg.className = 'msg ok'; msg.textContent = 'Si un compte existe pour cet e-mail, un lien vient de partir. Ouvre-le sur cet appareil.';
+      } else if (authMode === 'reset') {
+        await api('/auth/v1/user', { method: 'PUT', body: { password } });
+        authMode = 'login'; $('password').value = '';
+        start();
       } else {
         const r = await api('/auth/v1/token?grant_type=password', { body: { email, password }, auth: false });
         saveSession(r); start();
       }
     } catch (err) {
-      msg.className = 'msg err';
-      msg.textContent = /confirm/i.test(err.message) ? 'Confirme d\'abord ton e-mail (lien reçu par mail).'
-        : /invalid/i.test(err.message) ? 'E-mail ou mot de passe incorrect.' : err.message;
+      msg.className = 'msg err'; msg.textContent = authError(err.message);
     } finally { $('authBtn').disabled = false; }
   });
 
@@ -335,7 +378,7 @@ function wire() {
   });
   $('logout').addEventListener('click', async () => {
     try { await api('/auth/v1/logout', {}); } catch {}
-    logoutLocal(); show('auth');
+    logoutLocal(); show('auth'); setAuthMode('login'); loadAuthSettings();
   });
 
   $('readNow').addEventListener('click', (e) => {
@@ -351,6 +394,7 @@ function wire() {
 
 wire();
 start();
+window.addEventListener('hashchange', () => { if (location.hash.includes('access_token=')) start(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }

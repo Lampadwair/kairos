@@ -6,6 +6,8 @@ Premier module : **Soirée choisie**. Les modules **Argent** et **Nuits** viendr
 
 Compte 20 à 30 minutes, une seule fois.
 
+> **Ton installation (14/11/2026)** : la base est dans le projet Supabase **elan** (partagé avec Hepha). Les inscriptions y sont fermées, donc tu te connectes avec ton compte Hepha. L'app est en ligne sur https://lampadwair.github.io/kairos/. Les étapes 1 et 2 ci-dessous sont déjà faites : il reste l'étape 3 (iPhone) et l'étape 4 (Raccourcis).
+
 ---
 
 ## 1. Base de données Supabase

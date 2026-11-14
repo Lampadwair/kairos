@@ -205,11 +205,12 @@ nav.tabs button.on{color:var(--lamp)}
   <form class="auth" id="authForm" autocomplete="on">
     <div class="logo"><svg><use href="#logo"/></svg></div>
     <h1>Kairos</h1>
-    <p>Ta soirée, ton choix.</p>
-    <label class="field"><span>E-mail</span><input id="email" type="email" autocomplete="email" required></label>
-    <label class="field"><span>Mot de passe</span><input id="password" type="password" autocomplete="current-password" minlength="6" required></label>
+    <p id="authSub">Ta soirée, ton choix.</p>
+    <label class="field" id="emailField"><span>E-mail</span><input id="email" type="email" autocomplete="email" required></label>
+    <label class="field" id="passField"><span id="passLabel">Mot de passe</span><input id="password" type="password" autocomplete="current-password" minlength="6" required></label>
     <div class="msg" id="authMsg" role="status"></div>
     <button class="btn" type="submit" id="authBtn">Se connecter</button>
+    <button class="linkbtn" type="button" id="forgotBtn">Mot de passe oublié ?</button>
     <button class="linkbtn" type="button" id="authSwitch">Pas encore de compte ? Créer un compte</button>
   </form>
 </section>
