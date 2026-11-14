@@ -121,10 +121,11 @@ end $$;
 
 -- ---------- Fonction appelée par les Raccourcis iPhone ----------------------
 -- POST https://<projet>.supabase.co/rest/v1/rpc/kairos_log
--- en-tête apikey: <clé publishable>, corps JSON {"p_token": "...", "p_app": "insta", "p_event": "open"}
+-- en-tête apikey: <clé publishable>, corps JSON {"p_token": "...", "p_app": "insta open"}
+-- (ou p_app = "insta" et p_event = "open" séparément)
 -- Réponse : {"action": "none|warn|nudge|redirect|celebrate", "message": "...", ...}
 
-create or replace function public.kairos_log(p_token text, p_app text, p_event text)
+create or replace function public.kairos_log(p_token text, p_app text, p_event text default null)
 returns json language plpgsql volatile security definer set search_path = public as $$
 declare
   pr     kairos_profiles;
@@ -134,10 +135,18 @@ declare
   st     record;
   act    text := 'none';
   msg    text := '';
+  parts  text[];
 begin
   select * into pr from kairos_profiles where token = trim(p_token);
   if not found then
     raise exception 'Jeton Kairos inconnu : recopie-le depuis les réglages de l''app' using errcode = '28000';
+  end if;
+
+  -- Le raccourci peut tout envoyer dans p_app : « insta open », « lecture close »…
+  if coalesce(trim(p_event), '') = '' then
+    parts := regexp_split_to_array(trim(coalesce(p_app, '')), '\s+');
+    p_app := parts[1];
+    p_event := parts[array_length(parts, 1)];
   end if;
 
   v_app := case lower(trim(p_app))

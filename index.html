@@ -325,24 +325,27 @@ nav.tabs button.on{color:var(--lamp)}
       <details class="guide" id="guide">
         <summary>① Créer le raccourci « Kairos »</summary>
         <ol class="steps">
-          <li>App <b>Raccourcis</b> → onglet <b>Raccourcis</b> → <b>+</b>. Nomme-le exactement <code>Kairos</code>.</li>
-          <li>Ajoute <b>Diviser le texte</b> : <b>Entrée du raccourci</b> par <b>Espaces</b>. <span class="note">(S'il demande quoi recevoir, choisis Texte.)</span></li>
-          <li>Ajoute <b>Obtenir l'élément de la liste</b> : <b>Premier élément</b> de <b>Texte divisé</b>, puis <b>Définir la variable</b> <code>app</code>.</li>
-          <li>Ajoute <b>Obtenir l'élément de la liste</b> : <b>Dernier élément</b> de <b>Texte divisé</b>, puis <b>Définir la variable</b> <code>event</code>.</li>
-          <li>Ajoute <b>Obtenir le contenu de l'URL</b> avec l'adresse copiée plus haut. Touche la flèche pour déplier :
-            <br>• Méthode : <b>POST</b>
-            <br>• En-têtes : clé <code>apikey</code>, valeur = la clé copiée
-            <br>• Corps de requête : <b>JSON</b>, trois champs Texte : <code>p_token</code> = ton jeton, <code>p_app</code> = variable <b>app</b>, <code>p_event</code> = variable <b>event</b></li>
-          <li>Ajoute <b>Obtenir la valeur du dictionnaire</b> : valeur pour <code>action</code> dans <b>Contenu de l'URL</b>, puis <b>Définir la variable</b> <code>action</code>.</li>
-          <li>Ajoute <b>Si</b> : <b>action</b> <b>n'est pas</b> <code>none</code>. Dedans : <b>Obtenir la valeur du dictionnaire</b> <code>message</code> dans <b>Contenu de l'URL</b>, puis <b>Afficher la notification</b> avec cette valeur.</li>
-          <li>Ajoute un second <b>Si</b> : <b>action</b> <b>est</b> <code>redirect</code>. Dedans : <b>Ouvrir l'app</b> → <b>Manga Pin</b>.</li>
+          <li>App <b>Raccourcis</b> → onglet <b>Raccourcis</b> → <b>+</b>. Touche le nom en haut → <b>Renommer</b> → <code>Kairos</code>.</li>
+          <li>Ajoute <b>Obtenir le contenu de l'URL</b>. Remplace « URL » par l'adresse copiée plus haut, puis touche <b>›</b> pour déplier :
+            <br>• <b>Méthode</b> : POST
+            <br>• <b>En-têtes</b> → Ajouter un nouvel en-tête : clé <code>apikey</code>, texte = la clé copiée
+            <br>• <b>Corps de requête</b> : JSON → Ajouter un nouveau champ → <b>Texte</b> : clé <code>p_token</code>, valeur = ton jeton
+            <br>• Ajouter un nouveau champ → <b>Texte</b> : clé <code>p_app</code>. Pour la valeur, touche le champ puis choisis <b>Entrée du raccourci</b> dans la barre au-dessus du clavier.</li>
+          <li>Un bloc <b>Recevoir … de …</b> apparaît en haut : choisis <b>Texte</b> (la source peut rester « Nulle part »). Pour « S'il n'y a aucune entrée », choisis <b>Demander</b> : tu pourras tester en tapant <code>insta open</code>.</li>
+          <li>Ajoute <b>Obtenir la valeur du dictionnaire</b> : <b>Valeur</b> pour la clé <code>action</code> dans <b>Contenu de l'URL</b>.</li>
+          <li>Ajoute <b>Définir la variable</b> : nom <code>action</code>, valeur <b>Valeur du dictionnaire</b>.</li>
+          <li>Ajoute <b>Si</b> : touche la variable proposée pour choisir <b>action</b>, condition <b>n'est pas</b>, texte <code>none</code>. Entre <b>Si</b> et <b>Sinon</b>, ajoute :
+            <br>• <b>Obtenir la valeur du dictionnaire</b> : clé <code>message</code>, puis touche l'entrée et choisis <b>Contenu de l'URL</b>
+            <br>• <b>Afficher la notification</b> avec cette <b>Valeur du dictionnaire</b></li>
+          <li>Après <b>Fin de si</b>, ajoute un second <b>Si</b> : <b>action</b> <b>est</b> <code>redirect</code>. Dedans : <b>Ouvrir l'app</b> → <b>Manga Pin</b>.</li>
+          <li>Test : touche ▶, tape <code>insta close</code>. Rien ne doit s'afficher, et « Dernier signal » passe à « à l'instant ». Si une notification « Jeton Kairos inconnu » apparaît, recopie ton jeton.</li>
         </ol>
       </details>
       <details class="guide">
         <summary>② Créer les 4 automatisations</summary>
         <ol class="steps">
-          <li>Onglet <b>Automatisation</b> → <b>+</b> → <b>App</b> → choisis <b>Instagram</b>, coche seulement <b>Est ouverte</b>, choisis <b>Exécuter immédiatement</b> et désactive <b>Avertir lors de l'exécution</b> → <b>Suivant</b>.</li>
-          <li><b>Nouvelle automatisation vide</b> → ajoute <b>Texte</b> : <code>insta open</code> → ajoute <b>Exécuter le raccourci</b> : <b>Kairos</b> (son entrée doit être le <b>Texte</b>).</li>
+          <li>Onglet <b>Automatisation</b> → <b>+</b> → <b>App</b> → <b>Choisir</b> → <b>Instagram</b>. Coche seulement <b>Est ouverte</b>, choisis <b>Exécuter immédiatement</b> et désactive <b>Avertir lors de l'exécution</b> → <b>Suivant</b>.</li>
+          <li><b>Nouvelle automatisation vide</b> → ajoute <b>Texte</b> : <code>insta open</code> → ajoute <b>Exécuter le raccourci</b> → choisis <b>Kairos</b>. L'action doit afficher « Exécuter Kairos avec Texte ». Déplie-la (›) et désactive <b>Afficher pendant l'exécution</b>.</li>
           <li>Recommence trois fois en changeant l'app, la case et le texte :
             <br>• Instagram, <b>Est fermée</b> → <code>insta close</code>
             <br>• Manga Pin, <b>Est ouverte</b> → <code>lecture open</code>

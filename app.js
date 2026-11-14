@@ -1,7 +1,7 @@
 // Kairos — module « Soirée choisie »
 // Pas de bibliothèque externe : on parle directement aux API REST de Supabase (Auth + RPC).
 'use strict';
-const APP_VER = '1.0.1';
+const APP_VER = '1.0.2';
 const CFG = window.KAIROS_CONFIG || {};
 const URL_BASE = (CFG.supabaseUrl || '').replace(/\/+$/, '');
 const KEY = CFG.supabaseKey || '';
