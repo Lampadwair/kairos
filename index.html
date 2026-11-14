@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kairos</title>
+<meta name="description" content="Ta soirée, ton choix : moins de scroll, plus de lecture.">
+<meta name="theme-color" content="#0E0F1C" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FBF7F0" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kairos">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root{
+  color-scheme: dark light;
+  --bg:#0E0F1C; --bg2:#15162B; --card:rgba(255,255,255,.045); --card-b:rgba(255,255,255,.09);
+  --ink:#EEEBF6; --ink2:#B4B1CC; --muted:#8481A1; --line:rgba(255,255,255,.08);
+  --lamp:#F2B84B; --lamp-ink:#1B1406;
+  --s-read:#BE8526; --s-scroll:#7F7BEA;         /* séries du graphique (palette validée, mode sombre) */
+  --track:rgba(255,255,255,.08);
+  --chart-surface:#14152A;
+  --ok:#7FD39B; --danger:#FF8A80;
+  --serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Roboto, sans-serif;
+  --r:20px;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#FBF7F0; --bg2:#F3ECDF; --card:#FFFFFF; --card-b:rgba(30,27,46,.08);
+    --ink:#1E1B2E; --ink2:#4A4660; --muted:#77728C; --line:rgba(30,27,46,.08);
+    --lamp:#B9790C; --lamp-ink:#FFFFFF;
+    --s-read:#B9790C; --s-scroll:#5B55D6;          /* palette validée, mode clair */
+    --track:rgba(30,27,46,.08);
+    --chart-surface:#FFFFFF;
+    --ok:#1F8A4C; --danger:#C0392B;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+body{min-height:100dvh;background:
+  radial-gradient(120% 60% at 85% -10%, color-mix(in oklab, var(--lamp) 16%, transparent) 0%, transparent 60%),
+  linear-gradient(180deg, var(--bg2) 0%, var(--bg) 45%)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+.wrap{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 96px)}
+
+/* En-tête */
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{width:30px;height:30px}
+.brand b{font-family:var(--serif);font-size:24px;font-weight:600;letter-spacing:.2px}
+.daylabel{color:var(--muted);font-size:13px}
+h1.hero{font-family:var(--serif);font-weight:500;font-size:30px;line-height:1.15;margin:18px 0 18px;letter-spacing:-.2px}
+h1.hero em{font-style:italic;color:var(--lamp)}
+h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:28px 4px 10px}
+
+.card{background:var(--card);border:1px solid var(--card-b);border-radius:var(--r);padding:16px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Compteurs */
+.meter .lbl{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink2);font-weight:600}
+.dot{width:10px;height:10px;border-radius:3px;flex:none}
+.dot.read{background:var(--s-read)} .dot.scroll{background:var(--s-scroll)}
+.meter .num{font-family:var(--serif);font-size:44px;line-height:1;margin:10px 0 2px;font-variant-numeric:tabular-nums}
+.meter .num small{font-family:var(--sans);font-size:15px;color:var(--muted);margin-left:4px}
+.meter .sub{font-size:13px;color:var(--muted);min-height:19px}
+.bar{height:8px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:12px}
+.bar i{display:block;height:100%;border-radius:99px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.bar.read i{background:var(--s-read)} .bar.scroll i{background:var(--s-scroll)}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--ink2)}
+.tag.ok{color:var(--ok)} .tag.over{color:var(--danger)}
+
+/* Série */
+.streak{display:flex;align-items:center;gap:16px}
+.flame{font-size:34px;line-height:1}
+.streak .big{font-family:var(--serif);font-size:38px;line-height:1;font-variant-numeric:tabular-nums}
+.streak .txt{color:var(--ink2);font-size:14px}
+.streak .txt b{color:var(--ink)}
+.dots{display:grid;grid-template-columns:repeat(14,1fr);gap:4px;margin-top:16px}
+.dots div{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--muted)}
+.dots span{width:100%;max-width:20px;aspect-ratio:1;border-radius:6px;background:var(--track)}
+.dots span.on{background:var(--s-read)}
+.dots span.today{background:transparent;outline:1.5px dashed var(--muted);outline-offset:-1.5px}
+.dots span.today.on{background:var(--s-read);outline:none}
+
+/* Graphique */
+.legend{display:flex;gap:16px;font-size:13px;color:var(--ink2);margin-bottom:6px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .q{width:14px;border-top:1.5px dashed var(--muted)}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{fill:var(--muted);font-size:11px;font-family:var(--sans)}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .quota{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 4}
+.chart .hit{fill:transparent}
+.chart .col.active .hl{fill:var(--track)}
+.tip{position:absolute;pointer-events:none;background:var(--bg2);border:1px solid var(--card-b);border-radius:12px;padding:8px 10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.25);white-space:nowrap;transform:translate(-50%,0);z-index:2;opacity:0;transition:opacity .12s}
+.tip.show{opacity:1}
+.tip .r{display:flex;align-items:center;gap:6px;color:var(--ink2)}
+.tip .r b{color:var(--ink);margin-left:auto;padding-left:12px;font-variant-numeric:tabular-nums}
+.tip .d{font-weight:600;margin-bottom:4px}
+.weeksum{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.weeksum .tag{font-weight:500}
+details.table{margin-top:12px;font-size:13px;color:var(--ink2)}
+details.table summary{cursor:pointer;color:var(--muted)}
+details.table table{width:100%;border-collapse:collapse;margin-top:8px}
+details.table td,details.table th{padding:5px 4px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+details.table td:first-child,details.table th:first-child{text-align:left}
+
+/* Boutons */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:16px;padding:15px 18px;font-weight:650;font-size:16px;background:var(--lamp);color:var(--lamp-ink);text-decoration:none;box-shadow:0 10px 30px -10px color-mix(in oklab, var(--lamp) 70%, transparent)}
+.btn:active{transform:scale(.985)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--card-b);box-shadow:none}
+.btn.small{width:auto;padding:8px 12px;font-size:14px;border-radius:12px}
+.btn.danger{color:var(--danger)}
+.lastsig{font-size:12px;color:var(--muted);text-align:center;margin-top:10px}
+
+/* Réglages */
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .t{font-weight:600}
+.row .d{font-size:13px;color:var(--muted)}
+.stepper{display:flex;align-items:center;gap:6px;flex:none}
+.stepper button{width:34px;height:34px;border-radius:10px;border:1px solid var(--card-b);background:var(--track);font-size:18px;line-height:1}
+.stepper output{min-width:58px;text-align:center;font-variant-numeric:tabular-nums;font-weight:600}
+.seg{display:flex;background:var(--track);border-radius:12px;padding:3px;flex:none}
+.seg button{border:0;background:transparent;padding:7px 12px;border-radius:9px;font-size:14px;font-weight:600;color:var(--ink2)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 6px rgba(0,0,0,.15)}
+select.sel{background:var(--track);border:1px solid var(--card-b);border-radius:10px;padding:7px 10px}
+.saved{font-size:12px;color:var(--ok);height:16px;text-align:right;margin-top:6px;opacity:0;transition:opacity .2s}
+.saved.show{opacity:1}
+.copy{display:flex;align-items:center;gap:8px;margin:6px 0 12px}
+.copy code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--track);border-radius:10px;padding:9px 10px;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.k{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+ol.steps{padding-left:20px;margin:8px 0 0}
+ol.steps li{margin:0 0 10px;color:var(--ink2);font-size:14.5px}
+ol.steps li b{color:var(--ink)}
+ol.steps code,.inline{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:var(--track);padding:1px 6px;border-radius:6px;color:var(--ink)}
+details.guide{border-top:1px solid var(--line);padding-top:10px;margin-top:6px}
+details.guide summary{font-weight:600;cursor:pointer;padding:6px 0}
+.soon{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.soon:last-child{border-bottom:0}
+.soon .e{font-size:22px}
+.soon p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.note{font-size:13px;color:var(--muted)}
+
+/* Barre d'onglets */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:8px;padding:10px 16px calc(env(safe-area-inset-bottom) + 10px);background:color-mix(in oklab, var(--bg) 78%, transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line)}
+nav.tabs button{flex:1;max-width:200px;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:600;padding:4px}
+nav.tabs button svg{width:24px;height:24px}
+nav.tabs button.on{color:var(--lamp)}
+
+/* Connexion */
+.auth{max-width:380px;margin:12vh auto 0;text-align:center}
+.auth .logo svg{width:76px;height:76px}
+.auth h1{font-family:var(--serif);font-weight:500;font-size:34px;margin:12px 0 4px}
+.auth p{color:var(--muted);margin:0 0 24px}
+.field{display:block;text-align:left;margin-bottom:12px}
+.field span{font-size:13px;color:var(--muted);font-weight:600}
+.field input{display:block;width:100%;margin-top:6px;padding:14px;border-radius:14px;border:1px solid var(--card-b);background:var(--card);font-size:16px}
+.msg{min-height:22px;font-size:14px;margin:10px 0}
+.msg.err{color:var(--danger)} .msg.ok{color:var(--ok)}
+.linkbtn{background:none;border:0;color:var(--lamp);font-weight:600;padding:10px;margin-top:6px}
+.empty{border:1px dashed var(--card-b);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.empty b{display:block;margin-bottom:4px}
+.empty p{margin:0 0 12px;color:var(--ink2);font-size:14px}
+</style>
+</head>
+<body>
+
+<!-- Logo réutilisé -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo" viewBox="0 0 64 64">
+    <path d="M40.5 9.5a19 19 0 1 0 14 29.6A15.5 15.5 0 0 1 40.5 9.5z" style="fill:var(--lamp)"/>
+    <path d="M14 46c6-3 12-3 18 0 6-3 12-3 18 0v8c-6-3-12-3-18 0-6-3-12-3-18 0z" style="fill:var(--bg);stroke:var(--ink)" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M32 46v8" style="stroke:var(--ink)" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="49" cy="15" r="2.2" style="fill:var(--ink)"/>
+  </symbol>
+</svg>
+
+<!-- Pas encore configuré -->
+<section id="v-setup" class="wrap hidden">
+  <div class="auth">
+    <div class="logo"><svg><use href="#logo"/></svg></div>
+    <h1>Kairos</h1>
+    <p>Il manque la connexion à Supabase.</p>
+    <div class="card" style="text-align:left">
+      <ol class="steps">
+        <li>Crée les tables : colle <code>supabase/schema.sql</code> dans <b>Supabase → SQL Editor</b>, puis <b>Run</b>.</li>
+        <li>Copie l'URL du projet et la clé <b>Publishable</b> dans <code>config.js</code>.</li>
+        <li>Publie avec <code>publier.bat</code>, puis recharge cette page.</li>
+      </ol>
+      <p class="note" style="margin:6px 0 0">Tout est détaillé dans <code class="inline">LISEZMOI.md</code>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Connexion -->
+<section id="v-auth" class="wrap hidden">
+  <form class="auth" id="authForm" autocomplete="on">
+    <div class="logo"><svg><use href="#logo"/></svg></div>
+    <h1>Kairos</h1>
+    <p>Ta soirée, ton choix.</p>
+    <label class="field"><span>E-mail</span><input id="email" type="email" autocomplete="email" required></label>
+    <label class="field"><span>Mot de passe</span><input id="password" type="password" autocomplete="current-password" minlength="6" required></label>
+    <div class="msg" id="authMsg" role="status"></div>
+    <button class="btn" type="submit" id="authBtn">Se connecter</button>
+    <button class="linkbtn" type="button" id="authSwitch">Pas encore de compte ? Créer un compte</button>
+  </form>
+</section>
+
+<!-- Application -->
+<section id="v-app" class="hidden">
+  <!-- Onglet Ce soir -->
+  <div id="t-tonight" class="wrap">
+    <div class="top">
+      <div class="brand"><svg><use href="#logo"/></svg><b>Kairos</b></div>
+      <div class="daylabel" id="dayLabel"></div>
+    </div>
+    <h1 class="hero" id="hero">Ta soirée, <em>ton choix.</em></h1>
+
+    <div class="empty hidden" id="emptyCard">
+      <b>Branche tes raccourcis iPhone</b>
+      <p>Kairos compte tes minutes tout seul dès que les automatisations Insta et Manga Pin sont en place. Ça prend 10 minutes.</p>
+      <button class="btn small" type="button" data-goto="settings">Voir le guide</button>
+    </div>
+
+    <div class="grid2">
+      <div class="card meter">
+        <div class="lbl"><span class="dot read"></span>Lecture</div>
+        <div class="num"><span id="readNum">0</span><small>min</small></div>
+        <div class="sub" id="readSub"></div>
+        <div class="bar read" role="progressbar" aria-label="Lecture par rapport à l'objectif" id="readBarWrap"><i id="readBar" style="width:0"></i></div>
+      </div>
+      <div class="card meter">
+        <div class="lbl"><span class="dot scroll"></span>Insta</div>
+        <div class="num"><span id="scrollNum">0</span><small>min</small></div>
+        <div class="sub" id="scrollSub"></div>
+        <div class="bar scroll" role="progressbar" aria-label="Insta par rapport au quota" id="scrollBarWrap"><i id="scrollBar" style="width:0"></i></div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px">
+      <a class="btn" id="readNow" href="#">📖 Lire maintenant</a>
+      <div class="lastsig" id="lastSig"></div>
+    </div>
+
+    <h2>Série de lecture</h2>
+    <div class="card">
+      <div class="streak">
+        <div class="flame" aria-hidden="true">🔥</div>
+        <div>
+          <div class="big" id="streakNum">0</div>
+        </div>
+        <div class="txt" id="streakTxt">jour d'affilée</div>
+      </div>
+      <div class="dots" id="dots" aria-label="Objectif lecture atteint sur les 14 dernières journées"></div>
+    </div>
+
+    <h2>7 dernières journées</h2>
+    <div class="card">
+      <div class="legend">
+        <span><i class="dot read"></i>Lecture</span>
+        <span><i class="dot scroll"></i>Insta</span>
+        <span><i class="q"></i>Quota Insta</span>
+      </div>
+      <div class="chart" id="chart"><div class="tip" id="tip"></div></div>
+      <div class="weeksum" id="weekSum"></div>
+      <details class="table"><summary>Voir en tableau</summary><table id="dataTable"></table></details>
+    </div>
+
+  </div>
+
+  <!-- Onglet Réglages -->
+  <div id="t-settings" class="wrap hidden">
+    <div class="top">
+      <div class="brand"><svg><use href="#logo"/></svg><b>Réglages</b></div>
+    </div>
+
+    <h2>Tes règles</h2>
+    <div class="card">
+      <div class="row">
+        <div><div class="t">Quota Insta</div><div class="d">Par journée</div></div>
+        <div class="stepper" data-key="insta_quota_min" data-min="0" data-max="180" data-step="5">
+          <button type="button" aria-label="Moins">−</button><output>20 min</output><button type="button" aria-label="Plus">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Objectif lecture</div><div class="d">Pour garder ta série</div></div>
+        <div class="stepper" data-key="reading_goal_min" data-min="5" data-max="180" data-step="5">
+          <button type="button" aria-label="Moins">−</button><output>15 min</output><button type="button" aria-label="Plus">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Quota dépassé</div><div class="d" id="modeDesc"></div></div>
+        <div class="seg" id="modeSeg">
+          <button type="button" data-mode="doux">Doux</button><button type="button" data-mode="ferme">Ferme</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Fin de journée</div><div class="d">Ta soirée compte jusqu'à cette heure</div></div>
+        <select class="sel" id="dayEnd">
+          <option value="3">3 h</option><option value="4">4 h</option><option value="5">5 h</option><option value="6">6 h</option>
+        </select>
+      </div>
+      <div class="saved" id="saved">Enregistré ✓</div>
+    </div>
+
+    <h2>Raccourcis iPhone</h2>
+    <div class="card">
+      <p class="note" style="margin-top:0">Ces trois valeurs servent dans le raccourci <b>Kairos</b>. Le jeton est personnel : il permet seulement d'ajouter des minutes à ton compte.</p>
+      <div class="k">Adresse (URL)</div>
+      <div class="copy"><code id="cUrl"></code><button class="btn ghost small" type="button" data-copy="cUrl">Copier</button></div>
+      <div class="k">En-tête apikey</div>
+      <div class="copy"><code id="cKey"></code><button class="btn ghost small" type="button" data-copy="cKey">Copier</button></div>
+      <div class="k">Jeton (p_token)</div>
+      <div class="copy"><code id="cTok"></code><button class="btn ghost small" type="button" data-copy="cTok">Copier</button></div>
+
+      <details class="guide" id="guide">
+        <summary>① Créer le raccourci « Kairos »</summary>
+        <ol class="steps">
+          <li>App <b>Raccourcis</b> → onglet <b>Raccourcis</b> → <b>+</b>. Nomme-le exactement <code>Kairos</code>.</li>
+          <li>Ajoute <b>Diviser le texte</b> : <b>Entrée du raccourci</b> par <b>Espaces</b>. <span class="note">(S'il demande quoi recevoir, choisis Texte.)</span></li>
+          <li>Ajoute <b>Obtenir l'élément de la liste</b> : <b>Premier élément</b> de <b>Texte divisé</b>, puis <b>Définir la variable</b> <code>app</code>.</li>
+          <li>Ajoute <b>Obtenir l'élément de la liste</b> : <b>Dernier élément</b> de <b>Texte divisé</b>, puis <b>Définir la variable</b> <code>event</code>.</li>
+          <li>Ajoute <b>Obtenir le contenu de l'URL</b> avec l'adresse copiée plus haut. Touche la flèche pour déplier :
+            <br>• Méthode : <b>POST</b>
+            <br>• En-têtes : clé <code>apikey</code>, valeur = la clé copiée
+            <br>• Corps de requête : <b>JSON</b>, trois champs Texte : <code>p_token</code> = ton jeton, <code>p_app</code> = variable <b>app</b>, <code>p_event</code> = variable <b>event</b></li>
+          <li>Ajoute <b>Obtenir la valeur du dictionnaire</b> : valeur pour <code>action</code> dans <b>Contenu de l'URL</b>, puis <b>Définir la variable</b> <code>action</code>.</li>
+          <li>Ajoute <b>Si</b> : <b>action</b> <b>n'est pas</b> <code>none</code>. Dedans : <b>Obtenir la valeur du dictionnaire</b> <code>message</code> dans <b>Contenu de l'URL</b>, puis <b>Afficher la notification</b> avec cette valeur.</li>
+          <li>Ajoute un second <b>Si</b> : <b>action</b> <b>est</b> <code>redirect</code>. Dedans : <b>Ouvrir l'app</b> → <b>Manga Pin</b>.</li>
+        </ol>
+      </details>
+      <details class="guide">
+        <summary>② Créer les 4 automatisations</summary>
+        <ol class="steps">
+          <li>Onglet <b>Automatisation</b> → <b>+</b> → <b>App</b> → choisis <b>Instagram</b>, coche seulement <b>Est ouverte</b>, choisis <b>Exécuter immédiatement</b> et désactive <b>Avertir lors de l'exécution</b> → <b>Suivant</b>.</li>
+          <li><b>Nouvelle automatisation vide</b> → ajoute <b>Texte</b> : <code>insta open</code> → ajoute <b>Exécuter le raccourci</b> : <b>Kairos</b> (son entrée doit être le <b>Texte</b>).</li>
+          <li>Recommence trois fois en changeant l'app, la case et le texte :
+            <br>• Instagram, <b>Est fermée</b> → <code>insta close</code>
+            <br>• Manga Pin, <b>Est ouverte</b> → <code>lecture open</code>
+            <br>• Manga Pin, <b>Est fermée</b> → <code>lecture close</code></li>
+          <li>Teste : ouvre Insta puis ferme-le, et reviens sur Kairos. Sous le bouton « Lire maintenant », « Dernier signal » doit indiquer « à l'instant ».</li>
+        </ol>
+      </details>
+      <details class="guide">
+        <summary>③ Bouton « Lire maintenant » (facultatif)</summary>
+        <ol class="steps">
+          <li>Crée un raccourci nommé <code>Kairos Lire</code> avec une seule action : <b>Ouvrir l'app</b> → <b>Manga Pin</b>.</li>
+          <li>Le gros bouton de l'onglet « Ce soir » le lance.</li>
+        </ol>
+      </details>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn ghost small" type="button" id="newToken">Changer de jeton</button>
+      </div>
+    </div>
+
+    <h2>Bientôt dans Kairos</h2>
+    <div class="card">
+      <div class="soon"><div class="e">💸</div><div><b>Argent sans effort</b><p>Chaque paiement Apple Pay noté tout seul, tes abonnements et leurs renouvellements, ton objectif d'épargne.</p></div></div>
+      <div class="soon"><div class="e">🌙</div><div><b>Nuits</b><p>Ta fin de soirée qui vibre sur la Vivoactive 6, et ton sommeil croisé avec tes soirées.</p></div></div>
+    </div>
+
+    <h2>Compte</h2>
+    <div class="card">
+      <div class="row"><div><div class="t" id="accEmail">—</div><div class="d" id="accStats"></div></div><button class="btn ghost small" type="button" id="logout">Déconnexion</button></div>
+      <div class="row"><div><div class="t">Effacer l'historique</div><div class="d">Utile après tes tests</div></div><button class="btn ghost small danger" type="button" id="clearHist">Effacer</button></div>
+    </div>
+    <p class="note" style="text-align:center;margin-top:18px" id="ver"></p>
+  </div>
+
+  <nav class="tabs">
+    <button type="button" class="on" data-tab="tonight">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Ce soir</button>
+    <button type="button" data-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Réglages</button>
+  </nav>
+</section>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
