@@ -332,13 +332,11 @@ nav.tabs button.on{color:var(--lamp)}
             <br>• <b>Corps de requête</b> : JSON → Ajouter un nouveau champ → <b>Texte</b> : clé <code>p_token</code>, valeur = ton jeton
             <br>• Ajouter un nouveau champ → <b>Texte</b> : clé <code>p_app</code>. Pour la valeur, touche le champ puis choisis <b>Entrée du raccourci</b> dans la barre au-dessus du clavier.</li>
           <li>Un bloc <b>Recevoir … de …</b> apparaît en haut : choisis <b>Texte</b> (la source peut rester « Nulle part »). Pour « S'il n'y a aucune entrée », choisis <b>Demander</b> : tu pourras tester en tapant <code>insta open</code>.</li>
-          <li>Ajoute <b>Obtenir la valeur du dictionnaire</b> : <b>Valeur</b> pour la clé <code>action</code> dans <b>Contenu de l'URL</b>.</li>
-          <li>Ajoute <b>Définir la variable</b> : nom <code>action</code>, valeur <b>Valeur du dictionnaire</b>.</li>
-          <li>Ajoute <b>Si</b> : touche la variable proposée pour choisir <b>action</b>, condition <b>n'est pas</b>, texte <code>none</code>. Entre <b>Si</b> et <b>Sinon</b>, ajoute :
-            <br>• <b>Obtenir la valeur du dictionnaire</b> : clé <code>message</code>, puis touche l'entrée et choisis <b>Contenu de l'URL</b>
-            <br>• <b>Afficher la notification</b> avec cette <b>Valeur du dictionnaire</b></li>
-          <li>Après <b>Fin de si</b>, ajoute un second <b>Si</b> : <b>action</b> <b>est</b> <code>redirect</code>. Dedans : <b>Ouvrir l'app</b> → <b>Manga Pin</b>.</li>
-          <li>Test : touche ▶, tape <code>insta close</code>. Rien ne doit s'afficher, et « Dernier signal » passe à « à l'instant ». Si une notification « Jeton Kairos inconnu » apparaît, recopie ton jeton.</li>
+          <li>Ajoute <b>Obtenir la valeur du dictionnaire</b> : <b>Valeur</b> pour la clé <code>message</code> dans <b>Contenu de l'URL</b>.</li>
+          <li>Ajoute <b>Si</b> : <b>Valeur du dictionnaire</b> <b>possède n'importe quelle valeur</b>. Dedans : <b>Afficher la notification</b> avec la <b>Valeur du dictionnaire</b>.</li>
+          <li>Après <b>Terminer si</b>, ajoute <b>Obtenir la valeur du dictionnaire</b> : clé <code>ouvrir</code>, puis touche l'entrée et choisis <b>Contenu de l'URL</b>.</li>
+          <li>Ajoute un second <b>Si</b> : cette nouvelle <b>Valeur du dictionnaire</b> <b>possède n'importe quelle valeur</b>. Dedans : <b>Ouvrir l'app</b> → <b>Manga Pin</b>.</li>
+          <li>Test : touche ▶, tape <code>insta close</code>. Rien ne doit s'afficher ni s'ouvrir, et « Dernier signal » passe à « à l'instant ». Si une notification « Jeton Kairos inconnu » apparaît, recopie ton jeton.</li>
         </ol>
       </details>
       <details class="guide">

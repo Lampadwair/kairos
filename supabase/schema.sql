@@ -123,7 +123,7 @@ end $$;
 -- POST https://<projet>.supabase.co/rest/v1/rpc/kairos_log
 -- en-tête apikey: <clé publishable>, corps JSON {"p_token": "...", "p_app": "insta open"}
 -- (ou p_app = "insta" et p_event = "open" séparément)
--- Réponse : {"action": "none|warn|nudge|redirect|celebrate", "message": "...", ...}
+-- Réponse : {"action": "none|warn|nudge|redirect|celebrate", "message": "..." (si besoin), "ouvrir": "manga" (si redirect), ...}
 
 create or replace function public.kairos_log(p_token text, p_app text, p_event text default null)
 returns json language plpgsql volatile security definer set search_path = public as $$
@@ -201,11 +201,15 @@ begin
     end if;
   end if;
 
-  return json_build_object(
-    'action', act, 'message', msg,
+  -- « message » et « ouvrir » ne sont présents que s'il y a quelque chose à faire :
+  -- le raccourci teste juste « possède une valeur », sans comparer de texte.
+  return json_strip_nulls(json_build_object(
+    'action', act,
+    'message', nullif(msg, ''),
+    'ouvrir', case when act = 'redirect' then 'manga' end,
     'insta_min', round(td.insta), 'lecture_min', round(td.lecture),
     'quota_min', pr.insta_quota_min, 'goal_min', pr.reading_goal_min
-  );
+  ));
 end $$;
 
 -- ---------- Fonctions appelées par la web app (personne connectée) ----------

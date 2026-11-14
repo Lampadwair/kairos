@@ -1,7 +1,7 @@
 // Kairos — module « Soirée choisie »
 // Pas de bibliothèque externe : on parle directement aux API REST de Supabase (Auth + RPC).
 'use strict';
-const APP_VER = '1.0.2';
+const APP_VER = '1.0.3';
 const CFG = window.KAIROS_CONFIG || {};
 const URL_BASE = (CFG.supabaseUrl || '').replace(/\/+$/, '');
 const KEY = CFG.supabaseKey || '';
@@ -274,24 +274,32 @@ function renderSettings() {
   $('accStats').textContent = data.events_count + ' signaux enregistrés';
 }
 
-let saveTimer = null;
+let saveTimer = null, savePending = false;
+async function flushSave() {
+  clearTimeout(saveTimer);
+  if (!savePending || !data) return;
+  const st = data.settings;
+  try {
+    await rpc('kairos_save_settings', { p_quota: st.insta_quota_min, p_goal: st.reading_goal_min, p_mode: st.mode, p_day_end: st.day_end_hour });
+    savePending = false;
+    const el = $('saved'); el.textContent = 'Enregistré ✓'; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 1400);
+    load();
+  } catch (e) { const el = $('saved'); el.textContent = 'Échec de l\'enregistrement : ' + e.message; el.classList.add('show'); }
+}
 function queueSave() {
+  savePending = true;
+  const el = $('saved'); el.textContent = 'Enregistrement…'; el.classList.add('show');
   renderSettings(); render();
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    const st = data.settings;
-    try {
-      await rpc('kairos_save_settings', { p_quota: st.insta_quota_min, p_goal: st.reading_goal_min, p_mode: st.mode, p_day_end: st.day_end_hour });
-      const el = $('saved'); el.textContent = 'Enregistré ✓'; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 1400);
-      load();
-    } catch (e) { const el = $('saved'); el.textContent = 'Échec : ' + e.message; el.classList.add('show'); }
-  }, 500);
+  saveTimer = setTimeout(flushSave, 350);
 }
 
 // ---------------------------------------------------------------- Chargement
 async function load() {
   try {
-    data = await rpc('kairos_dashboard', { p_days: 14 });
+    const fresh = await rpc('kairos_dashboard', { p_days: 14 });
+    if (savePending) return; // un réglage est en cours d'envoi : on ne l'écrase pas
+    data = fresh;
     store.set('kairos.cache', data);
     render(); renderSettings();
   } catch (e) {
@@ -386,7 +394,10 @@ function wire() {
     location.href = 'shortcuts://run-shortcut?name=' + encodeURIComponent(CFG.readShortcut || 'Kairos Lire');
   });
 
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && session) load(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushSave();          // on quitte l'app : on enregistre tout de suite
+    else if (session) load();
+  });
   setInterval(() => { if (document.visibilityState === 'visible' && session) load(); }, 60000);
 
   $('ver').textContent = 'Kairos ' + APP_VER;
