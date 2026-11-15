@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
   catch (e) { console.error("sub alerts", (e as Error).message); }
 
   // Rappels du soir (module Nuits)
-  let bedRows: { r_kind: string; r_target: string; r_insta: boolean; r_before: number; r_endpoint: string; r_p256dh: string; r_auth: string }[] = [];
+  let bedRows: { r_kind: string; r_target: string; r_wake: string | null; r_sleep_min: number | null; r_insta: boolean; r_before: number; r_endpoint: string; r_p256dh: string; r_auth: string }[] = [];
   try { bedRows = (await rpc("kairos_due_bed", { p_secret: secret })) ?? []; }
   catch (e) { console.error("bed", (e as Error).message); }
 
@@ -78,11 +78,14 @@ Deno.serve(async (req) => {
       else { failed++; console.error("push", code, (e as Error).message); }
     }
   };
-  const bedText = (r: { r_kind: string; r_target: string; r_insta: boolean; r_before: number }) =>
-    r.r_kind === "before"
-      ? (r.r_insta ? `Dans ${r.r_before} min, ta cible de coucher (${r.r_target}). Un dernier chapitre plutôt qu'Insta ? 📖`
-                   : `Dans ${r.r_before} min, ta cible de coucher (${r.r_target}) 🌙`)
-      : (r.r_insta ? `${r.r_target}, l'heure de ta cible. On pose Insta ? 🌙` : `${r.r_target}, l'heure de ta cible. Bonne nuit 🌙`);
+  const dur = (m: number) => m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}`;
+  const bedText = (r: { r_kind: string; r_target: string; r_wake: string | null; r_sleep_min: number | null; r_insta: boolean; r_before: number }) => {
+    const wake = r.r_wake && r.r_sleep_min != null ? ` Réveil ${r.r_wake} : ${dur(r.r_sleep_min)} de sommeil possible.` : "";
+    return r.r_kind === "before"
+      ? (r.r_insta ? `Dans ${r.r_before} min, ta cible de coucher (${r.r_target}). Un dernier chapitre plutôt qu'Insta ? 📖${wake}`
+                   : `Dans ${r.r_before} min, ta cible de coucher (${r.r_target}) 🌙${wake}`)
+      : (r.r_insta ? `${r.r_target}, l'heure de ta cible. On pose Insta ? 🌙${wake}` : `${r.r_target}, l'heure de ta cible. Bonne nuit 🌙${wake}`);
+  };
   const euros = (v: number) => Number(v).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
   const when = (d: number) => d <= 0 ? "aujourd'hui" : d === 1 ? "demain" : `dans ${d} jours`;
   await Promise.all([

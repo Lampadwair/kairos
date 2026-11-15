@@ -16,6 +16,8 @@ alter table public.kairos_profiles add column if not exists bed_remind       boo
 alter table public.kairos_profiles add column if not exists bed_remind_before integer not null default 30;
 alter table public.kairos_profiles add column if not exists bed_last_remind  timestamptz;
 alter table public.kairos_profiles add column if not exists last_sleep_sync  timestamptz;
+alter table public.kairos_profiles add column if not exists wake_week_m      integer not null default 480;  -- lever en semaine (minutes depuis minuit) : 08:00
+alter table public.kairos_profiles add column if not exists wake_weekend_m   integer;                       -- null = week-end libre
 
 do $$ begin
   alter table public.kairos_profiles add constraint kairos_sleep_chk check (
@@ -42,6 +44,16 @@ create table if not exists public.kairos_nights (
 alter table public.kairos_nights enable row level security;
 revoke all on public.kairos_nights from anon, authenticated;
 
+-- Levers prévus jour par jour (sinon : valeur par défaut semaine / week-end). wake_m null = jour libre.
+create table if not exists public.kairos_wake (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  day     date not null,
+  wake_m  integer check (wake_m between 0 and 1439),
+  primary key (user_id, day)
+);
+alter table public.kairos_wake enable row level security;
+revoke all on public.kairos_wake from anon, authenticated;
+
 -- ---------- Outils ----------
 
 create or replace function public.kairos_m18(p_at timestamptz, p_tz text)
@@ -65,6 +77,22 @@ $$;
 create or replace function public.kairos_bed_applies(p_night date, p_scope text)
 returns boolean language sql immutable as $$
   select p_scope = 'tous' or extract(dow from p_night) between 0 and 4
+$$;
+
+-- Heure de lever prévue un jour donné (minutes depuis minuit), null = pas de réveil imposé
+create or replace function public.kairos_wake_of(p_user uuid, p_day date)
+returns integer language sql stable security definer set search_path = public as $$
+  select case when w.user_id is not null then w.wake_m
+              when extract(isodow from p_day) between 1 and 5 then p.wake_week_m
+              else p.wake_weekend_m end
+  from kairos_profiles p left join kairos_wake w on w.user_id = p.user_id and w.day = p_day
+  where p.user_id = p_user
+$$;
+
+-- Le soir p_night compte pour la cible si un lever est prévu le lendemain
+create or replace function public.kairos_night_applies(p_user uuid, p_night date)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.kairos_wake_of(p_user, p_night + 1) is not null
 $$;
 
 -- Lignes envoyées par le raccourci : « début|fin|valeur » (dates ISO 8601)
@@ -119,7 +147,7 @@ begin
     into n, ok
   from kairos_nights
   where user_id = p_user and night >= today - 8 and night >= pr.bed_target_since
-    and kairos_bed_applies(night, pr.bed_scope);
+    and kairos_night_applies(p_user, night);
   if n < 3 or ok::numeric / n < 0.6 then return null; end if;
   nt := greatest(pr.bed_final_m18, pr.bed_target_m18 - pr.bed_step_min);
   update kairos_profiles set bed_target_m18 = nt, bed_target_since = today where user_id = p_user;
@@ -175,7 +203,7 @@ begin
   loop
     insert into kairos_nights as kn (user_id, night, bed_at, wake_at, asleep_min, deep_min, rem_min, core_min, awake_min, target_m18)
     values (pr.user_id, r.night, r.bed, r.wake, r.asleep, coalesce(r.deep, 0), coalesce(r.rem, 0), coalesce(r.core, 0), r.awake,
-            case when kairos_bed_applies(r.night, pr.bed_scope) then pr.bed_target_m18 end)
+            case when kairos_night_applies(pr.user_id, r.night) then pr.bed_target_m18 end)
     on conflict (user_id, night) do update
       set bed_at = excluded.bed_at, wake_at = excluded.wake_at, asleep_min = excluded.asleep_min,
           deep_min = excluded.deep_min, rem_min = excluded.rem_min, core_min = excluded.core_min,
@@ -211,8 +239,11 @@ begin
 end $$;
 
 -- ---------- Rappels du soir (envoyés par la fonction kairos-push) ----------
+drop function if exists public.kairos_due_bed(text);
+drop function if exists public.kairos_any_bed_due();
+drop function if exists public.kairos_bed_due();
 create or replace function public.kairos_bed_due()
-returns table (r_user uuid, r_kind text, r_target text, r_insta boolean)
+returns table (r_user uuid, r_kind text, r_target text, r_wake text, r_sleep_min integer, r_insta boolean)
 language sql stable security definer set search_path = public as $$
   with p as (
     select pr.*,
@@ -222,7 +253,7 @@ language sql stable security definer set search_path = public as $$
       and exists (select 1 from kairos_push_subs s where s.user_id = pr.user_id)),
   t as (
     select p.*, ((p.ev::timestamp + time '18:00' + make_interval(mins => p.bed_target_m18)) at time zone p.tz) tgt
-    from p where kairos_bed_applies(p.ev, p.bed_scope)),
+    from p where kairos_night_applies(p.user_id, p.ev)),
   k as (
     select t.*, case
       when now() >= tgt and now() < tgt + interval '20 minutes'
@@ -232,6 +263,8 @@ language sql stable security definer set search_path = public as $$
       end kind
     from t)
   select k.user_id, k.kind, kairos_hhmi(k.bed_target_m18),
+         to_char(time '00:00' + make_interval(mins => kairos_wake_of(k.user_id, k.ev + 1)), 'HH24:MI'),
+         (kairos_wake_of(k.user_id, k.ev + 1) + 1440 - (k.bed_target_m18 + 1080)) % 1440,
          coalesce((select e.kind = 'open' from kairos_events e
                    where e.user_id = k.user_id and e.app = 'insta' and e.at > now() - interval '45 minutes'
                    order by e.at desc, e.id desc limit 1), false)
@@ -244,7 +277,7 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 
 create or replace function public.kairos_due_bed(p_secret text)
-returns table (r_kind text, r_target text, r_insta boolean, r_before integer, r_endpoint text, r_p256dh text, r_auth text)
+returns table (r_kind text, r_target text, r_wake text, r_sleep_min integer, r_insta boolean, r_before integer, r_endpoint text, r_p256dh text, r_auth text)
 language plpgsql volatile security definer set search_path = public as $$
 begin
   if not public.kairos_check_secret(p_secret) then raise exception 'forbidden' using errcode = '42501'; end if;
@@ -252,7 +285,7 @@ begin
     with due as (select * from public.kairos_bed_due()),
     upd as (update kairos_profiles pr set bed_last_remind = now() from due where pr.user_id = due.r_user
             returning pr.user_id, pr.bed_remind_before)
-    select due.r_kind, due.r_target, due.r_insta, upd.bed_remind_before, s.endpoint, s.p256dh, s.auth
+    select due.r_kind, due.r_target, due.r_wake, due.r_sleep_min, due.r_insta, upd.bed_remind_before, s.endpoint, s.p256dh, s.auth
     from due join upd on upd.user_id = due.r_user join kairos_push_subs s on s.user_id = due.r_user;
 end $$;
 
@@ -270,15 +303,21 @@ begin
       'sleep_goal_min', pr.sleep_goal_min, 'bed_final_m18', pr.bed_final_m18, 'bed_step_min', pr.bed_step_min,
       'bed_target_m18', pr.bed_target_m18, 'bed_target_since', pr.bed_target_since, 'bed_scope', pr.bed_scope,
       'bed_remind', pr.bed_remind, 'bed_remind_before', pr.bed_remind_before,
-      'last_sleep_sync', pr.last_sleep_sync, 'token', pr.token),
-    'tonight', json_build_object('night', ev, 'applies', kairos_bed_applies(ev, pr.bed_scope),
+      'last_sleep_sync', pr.last_sleep_sync, 'token', pr.token,
+      'wake_week_m', pr.wake_week_m, 'wake_weekend_m', pr.wake_weekend_m),
+    'tonight', json_build_object('night', ev, 'applies', kairos_night_applies(uid, ev),
                                  'target', kairos_hhmi(pr.bed_target_m18)),
+    'days', (select json_agg(json_build_object('night', d::date, 'wake', kairos_wake_of(uid, d::date + 1),
+                                               'override', exists (select 1 from kairos_wake w where w.user_id = uid and w.day = d::date + 1))
+                             order by d)
+             from generate_series(ev, ev + 6, interval '1 day') d),
+    'avg_awake', (select round(avg(awake_min)) from kairos_nights where user_id = uid and night > ev - 14),
     'nights', (
       select coalesce(json_agg(x order by x.night), '[]'::json) from (
         select n.night, n.asleep_min asleep, n.deep_min deep, n.rem_min rem, n.core_min core, n.awake_min awake,
                kairos_m18(n.bed_at, pr.tz) bed_m, kairos_m18(n.wake_at, pr.tz) wake_m,
                to_char(n.bed_at at time zone pr.tz, 'HH24:MI') bed, to_char(n.wake_at at time zone pr.tz, 'HH24:MI') wake,
-               n.target_m18 target_m, kairos_bed_applies(n.night, pr.bed_scope) applies,
+               n.target_m18 target_m, kairos_night_applies(uid, n.night) applies,
                coalesce((select round(sum(s.minutes)) from kairos_sessions(uid, n.bed_at - interval '8 hours') s
                          where s.app = 'insta' and s.started >= (n.night::timestamp + time '21:00') at time zone pr.tz
                            and s.started < n.bed_at), 0) insta_late,
@@ -290,22 +329,42 @@ begin
   );
 end $$;
 
+drop function if exists public.kairos_nights_settings(integer, integer, integer, boolean, integer, text, boolean);
 create or replace function public.kairos_nights_settings(
-  p_goal integer, p_final integer, p_step integer, p_remind boolean, p_before integer, p_scope text,
-  p_recalibrate boolean default false)
+  p_goal integer, p_step integer, p_remind boolean, p_before integer,
+  p_wake_week integer, p_wake_weekend integer default null, p_recalibrate boolean default false)
 returns json language plpgsql volatile security definer set search_path = public as $$
-declare msg text;
+declare msg text; fin integer;
 begin
   if auth.uid() is null then raise exception 'Non connecté' using errcode = '28000'; end if;
+  if p_wake_week not between 240 and 780 or (p_wake_weekend is not null and p_wake_weekend not between 240 and 840) then
+    raise exception 'Heure de lever invalide' using errcode = '22023'; end if;
+  -- Coucher visé à terme = lever de semaine − sommeil visé − 15 min pour s'endormir
+  fin := least(600, greatest(180, ((p_wake_week - p_goal - 15 + 2880 - 1080) % 1440)));
   update kairos_profiles
-     set sleep_goal_min = p_goal, bed_final_m18 = p_final, bed_step_min = p_step,
-         bed_remind = p_remind, bed_remind_before = p_before, bed_scope = p_scope,
+     set sleep_goal_min = p_goal, bed_step_min = p_step, bed_remind = p_remind, bed_remind_before = p_before,
+         wake_week_m = p_wake_week, wake_weekend_m = p_wake_weekend, bed_final_m18 = fin,
          bed_target_m18 = case when p_recalibrate then null
-                               when bed_target_m18 is not null then greatest(bed_target_m18, p_final) end
+                               when bed_target_m18 is not null then greatest(bed_target_m18, fin) end
    where user_id = auth.uid();
   if p_recalibrate then msg := kairos_bed_progress(auth.uid()); end if;
-  return json_build_object('ok', true, 'message', msg);
+  return json_build_object('ok', true, 'message', msg, 'bed_final_m18', fin);
 end $$;
+
+-- Lever d'un jour précis : p_wake = minutes depuis minuit, null = jour libre ; p_reset = revenir au défaut
+create or replace function public.kairos_wake_set(p_day date, p_wake integer, p_reset boolean default false)
+returns void language plpgsql volatile security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'Non connecté' using errcode = '28000'; end if;
+  if p_reset then delete from kairos_wake where user_id = auth.uid() and day = p_day; return; end if;
+  if p_wake is not null and p_wake not between 0 and 1439 then raise exception 'Heure invalide' using errcode = '22023'; end if;
+  insert into kairos_wake (user_id, day, wake_m) values (auth.uid(), p_day, p_wake)
+  on conflict (user_id, day) do update set wake_m = excluded.wake_m;
+  delete from kairos_wake where user_id = auth.uid() and day < current_date - 60;
+end $$;
+
+-- Coucher visé à terme recalculé depuis le lever de semaine (idempotent)
+update kairos_profiles set bed_final_m18 = least(600, greatest(180, ((wake_week_m - sleep_goal_min - 15 + 2880 - 1080) % 1440)));
 
 -- ---------- Droits ----------
 revoke all on function public.kairos_sleep_parse(text)      from public, anon, authenticated;
@@ -317,9 +376,13 @@ revoke all on function public.kairos_due_bed(text)          from public;
 grant execute on function public.kairos_sleep(text, text)   to anon, authenticated;
 grant execute on function public.kairos_due_bed(text)       to anon, authenticated;
 revoke all on function public.kairos_nights_dash(integer)   from public, anon;
-revoke all on function public.kairos_nights_settings(integer, integer, integer, boolean, integer, text, boolean) from public, anon;
+revoke all on function public.kairos_nights_settings(integer, integer, boolean, integer, integer, integer, boolean) from public, anon;
+revoke all on function public.kairos_wake_set(date, integer, boolean) from public, anon;
+revoke all on function public.kairos_wake_of(uuid, date)        from public, anon, authenticated;
+revoke all on function public.kairos_night_applies(uuid, date)  from public, anon, authenticated;
 grant execute on function public.kairos_nights_dash(integer) to authenticated;
-grant execute on function public.kairos_nights_settings(integer, integer, integer, boolean, integer, text, boolean) to authenticated;
+grant execute on function public.kairos_nights_settings(integer, integer, boolean, integer, integer, integer, boolean) to authenticated;
+grant execute on function public.kairos_wake_set(date, integer, boolean) to authenticated;
 
 -- ---------- Tâche planifiée : réveille aussi la fonction pour les rappels du soir ----------
 select cron.unschedule(jobid) from cron.job where jobname = 'kairos-rappels';

@@ -251,6 +251,27 @@ nav.tabs button.on{color:var(--lamp)}
 .insight{font-size:14px;color:var(--ink2);margin:0}
 .insight + .insight{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .insight b{color:var(--ink)}
+.plan .wk{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.plan .wk b{font-family:var(--serif);font-size:30px;font-weight:500;font-variant-numeric:tabular-nums}
+.plan ul{margin:12px 0 0;padding-left:18px}
+.plan li{margin:0 0 8px;color:var(--ink2);font-size:14.5px}
+.plan li b{color:var(--ink)}
+.plan li.warn{color:var(--ink)}
+/* Réglages : accueil + pages */
+.menu{padding:4px 16px}
+.mrow{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:10px;width:100%;padding:12px 0;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;color:var(--ink)}
+.mrow:last-child{border-bottom:0}
+.mrow .e{font-size:20px;text-align:center}
+.mrow .m b{display:block;font-weight:600;font-size:15.5px}
+.mrow .m small{display:block;font-size:13px;color:var(--muted);margin-top:1px}
+.mrow .go{color:var(--muted);font-size:22px;line-height:1}
+.mrow .st{font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--track);color:var(--muted);white-space:nowrap}
+.mrow .st.ok{color:var(--ok)} .mrow .st.todo{color:var(--lamp)}
+.back{border:0;background:none;color:var(--lamp);font-weight:600;font-size:16px;padding:6px 0;margin-top:4px}
+h1.ptitle{font-family:var(--serif);font-weight:500;font-size:30px;margin:4px 0 6px}
+.plainlist{margin:6px 0 12px;padding-left:4px;list-style:none;color:var(--ink2);font-size:14.5px}
+.plainlist li{margin:4px 0}
+.card > details.guide:first-child{border-top:0;margin-top:0;padding-top:0}
 </style>
 </head>
 <body>
@@ -502,6 +523,15 @@ nav.tabs button.on{color:var(--lamp)}
       <div class="sub" id="nTonightTxt"></div>
     </div>
 
+    <h2 id="nPlanH">Demain</h2>
+    <div class="card plan" id="nPlan"></div>
+
+    <h2>Tes levers</h2>
+    <div class="card">
+      <div id="nDays"></div>
+      <p class="note" style="margin:10px 0 0">Touche un jour pour changer l'heure ou le marquer libre. Par défaut : réglages → Nuits.</p>
+    </div>
+
     <div id="nBody">
     <h2>Dernière nuit</h2>
     <div class="card night-hero">
@@ -537,6 +567,29 @@ nav.tabs button.on{color:var(--lamp)}
       <div class="brand"><svg><use href="#logo"/></svg><b>Réglages</b></div>
     </div>
 
+  <div id="sHome">
+    <h2>Ton installation</h2>
+    <div class="card menu" id="sSetup"></div>
+
+    <h2>Modules</h2>
+    <div class="card menu">
+      <button class="mrow" type="button" data-spage="soiree"><span class="e">📖</span><span class="m"><b>Soirée</b><small id="sumSoiree">—</small></span><span class="go">›</span></button>
+      <button class="mrow" type="button" data-spage="nuits"><span class="e">🌙</span><span class="m"><b>Nuits</b><small id="sumNuits">—</small></span><span class="go">›</span></button>
+      <button class="mrow" type="button" data-spage="argent"><span class="e">💳</span><span class="m"><b>Argent</b><small id="sumArgent">—</small></span><span class="go">›</span></button>
+    </div>
+
+    <h2>Général</h2>
+    <div class="card menu">
+      <button class="mrow" type="button" data-spage="notif"><span class="e">🔔</span><span class="m"><b>Notifications</b><small id="sumNotif">—</small></span><span class="go">›</span></button>
+      <button class="mrow" type="button" data-spage="setup"><span class="e">🔗</span><span class="m"><b>Raccourcis iPhone</b><small>Guides, adresse, clé et jeton</small></span><span class="go">›</span></button>
+      <button class="mrow" type="button" data-spage="compte"><span class="e">👤</span><span class="m"><b>Compte</b><small id="sumCompte">—</small></span><span class="go">›</span></button>
+    </div>
+    <p class="note" style="text-align:center;margin-top:18px" id="ver"></p>
+  </div>
+
+  <div class="spage hidden" data-page="soiree">
+    <button class="back" type="button" data-back>‹ Réglages</button>
+    <h1 class="ptitle">Soirée</h1>
     <h2>Tes règles</h2>
     <div class="card">
       <div class="row">
@@ -569,8 +622,7 @@ nav.tabs button.on{color:var(--lamp)}
     <h2>Rappels pendant le scroll</h2>
     <div class="card">
       <p class="note" style="margin-top:0">Quand Insta reste ouvert longtemps, Kairos t'envoie une notification. En la touchant, tu peux passer à un chapitre ou reprendre 5 min.</p>
-      <div class="pushstate" id="pushState">…</div>
-      <button class="btn small" type="button" id="pushBtn">🔔 Activer les notifications sur cet iPhone</button>
+      <p class="note" style="margin:0 0 4px">Les notifications s'activent dans <button class="linkbtn" type="button" data-spage="notif" style="padding:0">Notifications</button>.</p>
       <div class="row" style="margin-top:6px">
         <div><div class="t">Rappels</div><div class="d" id="remindDesc"></div></div>
         <div class="seg" id="remindSeg"><button type="button" data-on="1">Oui</button><button type="button" data-on="0">Non</button></div>
@@ -589,7 +641,65 @@ nav.tabs button.on{color:var(--lamp)}
       </div>
     </div>
 
-    <h2>Argent</h2>
+  </div>
+
+  <div class="spage hidden" data-page="nuits">
+    <button class="back" type="button" data-back>‹ Réglages</button>
+    <h1 class="ptitle">Nuits</h1>
+    <h2>Coucher et lever</h2>
+    <div class="card" id="nSettings">
+      <div class="row">
+        <div><div class="t">Sommeil visé</div><div class="d">Pour calculer ce qui te manque</div></div>
+        <div class="stepper" data-nkey="sleep_goal_min" data-min="360" data-max="600" data-step="15" data-fmt="dur">
+          <button type="button" aria-label="Moins">−</button><output>7 h 30</output><button type="button" aria-label="Plus">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Lever en semaine</div><div class="d">Du lundi au vendredi, sauf jour modifié</div></div>
+        <div class="stepper" data-nkey="wake_week_m" data-min="300" data-max="720" data-step="15" data-fmt="clock">
+          <button type="button" aria-label="Plus tôt">−</button><output>08:00</output><button type="button" aria-label="Plus tard">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Lever le week-end</div><div class="d">« Libre » : pas de cible les vendredis et samedis soir</div></div>
+        <div class="stepper" data-nkey="wake_weekend_m" data-min="300" data-max="780" data-step="15" data-fmt="free">
+          <button type="button" aria-label="Plus tôt">−</button><output>Libre</output><button type="button" aria-label="Plus tard">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Coucher visé à terme</div><div class="d" id="nFinalDesc"></div></div>
+        <output id="nFinal" style="font-weight:600;font-variant-numeric:tabular-nums">00:15</output>
+      </div>
+      <div class="row">
+        <div><div class="t">Palier</div><div class="d">Quand tu tiens ta cible 60 % des soirs sur une semaine</div></div>
+        <div class="stepper" data-nkey="bed_step_min" data-min="5" data-max="30" data-step="5" data-fmt="min">
+          <button type="button" aria-label="Moins">−</button><output>15 min</output><button type="button" aria-label="Plus">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Rappels du soir</div><div class="d">Notification avant et à l'heure cible (aussi sur ta montre)</div></div>
+        <div class="seg" id="nRemindSeg"><button type="button" data-on="1">Oui</button><button type="button" data-on="0">Non</button></div>
+      </div>
+      <div class="row">
+        <div><div class="t">Premier rappel</div><div class="d">Avant l'heure cible</div></div>
+        <div class="stepper" data-nkey="bed_remind_before" data-min="10" data-max="90" data-step="5" data-fmt="min">
+          <button type="button" aria-label="Moins">−</button><output>30 min</output><button type="button" aria-label="Plus">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Repartir de mes nuits actuelles</div><div class="d">Recalcule la cible depuis ta moyenne récente</div></div>
+        <button class="btn ghost small" type="button" id="nRecal">Recalibrer</button>
+      </div>
+      <div class="saved" id="nSaved">Enregistré ✓</div>
+
+    </div>
+
+  </div>
+
+  <div class="spage hidden" data-page="argent">
+    <button class="back" type="button" data-back>‹ Réglages</button>
+    <h1 class="ptitle">Argent</h1>
+    <h2>Budget</h2>
     <div class="card">
       <div class="row">
         <div><div class="t">Budget du mois</div><div class="d">Alerte à 80 % et 100 %</div></div>
@@ -597,24 +707,30 @@ nav.tabs button.on{color:var(--lamp)}
           <button type="button" aria-label="Moins">−</button><output id="budgetOut">—</output><button type="button" aria-label="Plus">+</button>
         </div>
       </div>
-      <details class="guide" id="payGuide">
-        <summary>💳 Noter les paiements Apple Pay automatiquement</summary>
-        <ol class="steps">
-          <li>App <b>Raccourcis</b> → onglet <b>Automatisation</b> → <b>+</b> → <b>Wallet</b> (« Transaction » sur les anciens iOS). Choisis ta ou tes cartes, puis <b>Exécuter immédiatement</b> → <b>Suivant</b> → <b>Nouvelle automatisation vide</b>.</li>
-          <li>Ajoute <b>Obtenir le contenu de l'URL</b> avec cette adresse :
-            <div class="copy"><code id="cPayUrl"></code><button class="btn ghost small" type="button" data-copy="cPayUrl">Copier</button></div>
-            Déplie avec <b>›</b> : Méthode <b>POST</b> ; En-têtes : <code>apikey</code> = la même clé que pour le raccourci Kairos ; Corps <b>JSON</b> avec trois champs Texte :
-            <br>• <code>p_token</code> = ton jeton (le même que pour le raccourci Kairos)
-            <br>• <code>p_amount</code> = touche le champ, choisis <b>Entrée du raccourci</b>, puis touche la bulle et choisis <b>Montant</b>
-            <br>• <code>p_merchant</code> = <b>Entrée du raccourci</b> → <b>Commerçant</b></li>
-          <li>(Facultatif) Pour les alertes de budget : ajoute <b>Obtenir la valeur du dictionnaire</b> <code>message</code> dans <b>Contenu de l'URL</b>, puis <b>Si</b> cette valeur <b>possède n'importe quelle valeur</b> → <b>Afficher la notification</b>.</li>
-          <li>Si rien n'arrive : <b>Réglages iPhone → Apps → Wallet</b>, active <b>Données cellulaires</b>.</li>
-          <li>Les paiements par carte physique ou en ligne ne passent pas par là : ajoute-les à la main dans l'onglet Argent, ça prend 5 secondes.</li>
-        </ol>
-      </details>
     </div>
 
-    <h2>Raccourcis iPhone</h2>
+  </div>
+
+  <div class="spage hidden" data-page="notif">
+    <button class="back" type="button" data-back>‹ Réglages</button>
+    <h1 class="ptitle">Notifications</h1>
+    <div class="card">
+      <p class="note" style="margin-top:0">Kairos t'envoie des notifications pour :</p>
+      <ul class="plainlist">
+        <li>📖 les longues sessions Insta (réglages dans <b>Soirée</b>) ;</li>
+        <li>🌙 ta cible de coucher (réglages dans <b>Nuits</b>) ;</li>
+        <li>💳 les abonnements qui se renouvellent.</li>
+      </ul>
+      <div class="pushstate" id="pushState">…</div>
+      <button class="btn small" type="button" id="pushBtn">🔔 Activer les notifications sur cet iPhone</button>
+      <p class="note" style="margin:12px 0 0">Pour les recevoir aussi sur ta Vivoactive : Garmin Connect → Appareils → ta montre → Notifications intelligentes.</p>
+    </div>
+  </div>
+
+  <div class="spage hidden" data-page="setup">
+    <button class="back" type="button" data-back>‹ Réglages</button>
+    <h1 class="ptitle">Raccourcis iPhone</h1>
+    <h2>Tes valeurs</h2>
     <div class="card">
       <p class="note" style="margin-top:0">Ces trois valeurs servent dans le raccourci <b>Kairos</b>. Le jeton est personnel : il permet seulement d'ajouter des minutes à ton compte.</p>
       <div class="k">Adresse (URL)</div>
@@ -624,6 +740,13 @@ nav.tabs button.on{color:var(--lamp)}
       <div class="k">Jeton (p_token)</div>
       <div class="copy"><code id="cTok"></code><button class="btn ghost small" type="button" data-copy="cTok">Copier</button></div>
 
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn ghost small" type="button" id="newToken">Changer de jeton</button>
+      </div>
+    </div>
+
+    <h2>Guides</h2>
+    <div class="card">
       <details class="guide" id="guide">
         <summary>① Créer le raccourci « Kairos »</summary>
         <ol class="steps">
@@ -660,53 +783,23 @@ nav.tabs button.on{color:var(--lamp)}
           <li>Le gros bouton de l'onglet « Ce soir » le lance.</li>
         </ol>
       </details>
-      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-        <button class="btn ghost small" type="button" id="newToken">Changer de jeton</button>
-      </div>
-    </div>
-
-    <h2>Nuits</h2>
-    <div class="card" id="nSettings">
-      <div class="row">
-        <div><div class="t">Sommeil visé</div><div class="d">Pour calculer ce qui te manque</div></div>
-        <div class="stepper" data-nkey="sleep_goal_min" data-min="360" data-max="600" data-step="15" data-fmt="dur">
-          <button type="button" aria-label="Moins">−</button><output>7 h 30</output><button type="button" aria-label="Plus">+</button>
-        </div>
-      </div>
-      <div class="row">
-        <div><div class="t">Coucher visé à terme</div><div class="d">La cible avance par petits paliers jusque-là</div></div>
-        <div class="stepper" data-nkey="bed_final_m18" data-min="240" data-max="540" data-step="15" data-fmt="hhmi">
-          <button type="button" aria-label="Moins">−</button><output>00:00</output><button type="button" aria-label="Plus">+</button>
-        </div>
-      </div>
-      <div class="row">
-        <div><div class="t">Palier</div><div class="d">Quand tu tiens ta cible 60 % des soirs sur une semaine</div></div>
-        <div class="stepper" data-nkey="bed_step_min" data-min="5" data-max="30" data-step="5" data-fmt="min">
-          <button type="button" aria-label="Moins">−</button><output>15 min</output><button type="button" aria-label="Plus">+</button>
-        </div>
-      </div>
-      <div class="row">
-        <div><div class="t">Soirs concernés</div><div class="d" id="nScopeDesc"></div></div>
-        <div class="seg" id="nScopeSeg"><button type="button" data-v="semaine">Semaine</button><button type="button" data-v="tous">Tous</button></div>
-      </div>
-      <div class="row">
-        <div><div class="t">Rappels du soir</div><div class="d">Notification avant et à l'heure cible (aussi sur ta montre)</div></div>
-        <div class="seg" id="nRemindSeg"><button type="button" data-on="1">Oui</button><button type="button" data-on="0">Non</button></div>
-      </div>
-      <div class="row">
-        <div><div class="t">Premier rappel</div><div class="d">Avant l'heure cible</div></div>
-        <div class="stepper" data-nkey="bed_remind_before" data-min="10" data-max="90" data-step="5" data-fmt="min">
-          <button type="button" aria-label="Moins">−</button><output>30 min</output><button type="button" aria-label="Plus">+</button>
-        </div>
-      </div>
-      <div class="row">
-        <div><div class="t">Repartir de mes nuits actuelles</div><div class="d">Recalcule la cible depuis ta moyenne récente</div></div>
-        <button class="btn ghost small" type="button" id="nRecal">Recalibrer</button>
-      </div>
-      <div class="saved" id="nSaved">Enregistré ✓</div>
-
+      <details class="guide" id="payGuide">
+        <summary>④ Apple Pay → Argent</summary>
+        <ol class="steps">
+          <li>App <b>Raccourcis</b> → onglet <b>Automatisation</b> → <b>+</b> → <b>Wallet</b> (« Transaction » sur les anciens iOS). Choisis ta ou tes cartes, puis <b>Exécuter immédiatement</b> → <b>Suivant</b> → <b>Nouvelle automatisation vide</b>.</li>
+          <li>Ajoute <b>Obtenir le contenu de l'URL</b> avec cette adresse :
+            <div class="copy"><code id="cPayUrl"></code><button class="btn ghost small" type="button" data-copy="cPayUrl">Copier</button></div>
+            Déplie avec <b>›</b> : Méthode <b>POST</b> ; En-têtes : <code>apikey</code> = la même clé que pour le raccourci Kairos ; Corps <b>JSON</b> avec trois champs Texte :
+            <br>• <code>p_token</code> = ton jeton (le même que pour le raccourci Kairos)
+            <br>• <code>p_amount</code> = touche le champ, choisis <b>Entrée du raccourci</b>, puis touche la bulle et choisis <b>Montant</b>
+            <br>• <code>p_merchant</code> = <b>Entrée du raccourci</b> → <b>Commerçant</b></li>
+          <li>Pour les alertes de budget : ajoute <b>Obtenir la valeur du dictionnaire</b> <code>message</code> dans <b>Contenu de l'URL</b>, puis <b>Si</b> <b>Valeur du dictionnaire</b> <b>possède n'importe quelle valeur</b> → dedans, <b>Afficher la notification</b> avec la <b>Valeur du dictionnaire</b>. Sans ce <b>Si</b>, chaque paiement afficherait une notification vide.</li>
+          <li>Si rien n'arrive : <b>Réglages iPhone → Apps → Wallet</b>, active <b>Données cellulaires</b>.</li>
+          <li>Les paiements par carte physique ou en ligne ne passent pas par là : ajoute-les à la main dans l'onglet Argent, ça prend 5 secondes.</li>
+        </ol>
+      </details>
       <details class="guide" id="sleepGuide">
-        <summary>⌚ Envoyer tes nuits Garmin à Kairos</summary>
+        <summary>⑤ Garmin → Nuits</summary>
         <ol class="steps">
           <li><b>Garmin Connect</b> → <b>Plus</b> (≡) → <b>Paramètres</b> → <b>Applications connectées</b> → <b>Apple Santé</b> → active <b>Sommeil</b> (et autorise dans la fenêtre Santé). Synchronise ta montre, puis vérifie dans <b>Santé → Parcourir → Sommeil</b> que ta dernière nuit apparaît.</li>
           <li>App <b>Raccourcis</b> → <b>+</b> → renomme-le <code>Kairos Nuit</code>. Ajoute <b>Rechercher des échantillons de santé</b> : touche <b>Type</b> → <b>Analyse du sommeil</b>. Ajoute un filtre <b>Date de début</b> <b>est dans les derniers</b> <code>7</code> <b>jours</b>. Trier par <b>Date de début</b>, ordre <b>Croissant</b>, Limite désactivée.</li>
@@ -721,13 +814,17 @@ nav.tabs button.on{color:var(--lamp)}
         </ol>
       </details>
     </div>
+  </div>
 
-    <h2>Compte</h2>
+  <div class="spage hidden" data-page="compte">
+    <button class="back" type="button" data-back>‹ Réglages</button>
+    <h1 class="ptitle">Compte</h1>
     <div class="card">
       <div class="row"><div><div class="t" id="accEmail">—</div><div class="d" id="accStats"></div></div><button class="btn ghost small" type="button" id="logout">Déconnexion</button></div>
       <div class="row"><div><div class="t">Effacer l'historique</div><div class="d">Utile après tes tests</div></div><button class="btn ghost small danger" type="button" id="clearHist">Effacer</button></div>
     </div>
-    <p class="note" style="text-align:center;margin-top:18px" id="ver"></p>
+  </div>
+
   </div>
 
   <nav class="tabs">

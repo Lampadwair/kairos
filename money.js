@@ -206,6 +206,7 @@ function renderBudget() {
   const b = money && money.budget != null ? +money.budget : null;
   $('budgetOut').textContent = b ? eur(b) : 'Aucun';
   $('cPayUrl').textContent = URL_BASE + '/rest/v1/rpc/kairos_pay';
+  if (typeof renderSettingsHome === 'function') renderSettingsHome();
 }
 let budgetTimer = null;
 function changeBudget(dir) {

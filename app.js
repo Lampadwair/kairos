@@ -1,7 +1,7 @@
 // Kairos — module « Soirée choisie »
 // Pas de bibliothèque externe : on parle directement aux API REST de Supabase (Auth + RPC).
 'use strict';
-const APP_VER = '1.4.0';
+const APP_VER = '1.5.0';
 const CFG = window.KAIROS_CONFIG || {};
 const URL_BASE = (CFG.supabaseUrl || '').replace(/\/+$/, '');
 const KEY = CFG.supabaseKey || '';
@@ -123,6 +123,7 @@ function tab(name) {
   $('t-nights').classList.toggle('hidden', name !== 'nights');
   $('t-settings').classList.toggle('hidden', name !== 'settings');
   if (name === 'nights' || name === 'settings') { if (typeof loadNights === 'function') loadNights(); }
+  if (name === 'settings') { sPage(''); renderSettingsHome(); }
   if (name === 'money' || (name === 'settings' && typeof money !== 'undefined' && !money)) { if (typeof loadMoney === 'function') loadMoney(); }
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
   window.scrollTo(0, 0);
@@ -283,6 +284,37 @@ function renderSettings() {
     : st.remind_snoozed ? 'En pause jusqu\'à la fin de la soirée'
     : 'Après ' + st.remind_after_min + ' min, puis toutes les ' + st.remind_every_min + ' min';
   renderPushState();
+  renderSettingsHome();
+}
+
+// ---------------------------------------------------------------- Réglages : accueil et pages
+function sPage(name) {
+  document.querySelectorAll('#t-settings .spage').forEach(p => p.classList.toggle('hidden', p.dataset.page !== name));
+  $('sHome').classList.toggle('hidden', !!name);
+  if (!name) renderSettingsHome();
+  window.scrollTo(0, 0);
+}
+function renderSettingsHome() {
+  const st = data && data.settings, ns = typeof nights !== 'undefined' && nights ? nights.settings : null, mo = typeof money !== 'undefined' ? money : null;
+  const fresh = (iso, days) => iso && (Date.now() - new Date(iso)) < days * 86400000;
+  const rows = [
+    ['🔔', 'Notifications', data ? (data.push_devices > 0 ? 'Activées' : 'Pas encore activées') : '…', data && data.push_devices > 0, 'data-spage="notif"'],
+    ['📲', 'Raccourci Kairos + automatisations', data && data.last_event ? 'Dernier signal ' + ago(data.last_event) : 'Aucun signal reçu', data && fresh(data.last_event, 3), 'data-guide="guide"'],
+    ['💳', 'Apple Pay → Argent', mo && mo.last_applepay ? 'Dernier paiement ' + ago(mo.last_applepay) : 'Aucun paiement reçu', mo && fresh(mo.last_applepay, 7), 'data-guide="payGuide"'],
+    ['⌚', 'Garmin → Nuits', ns && ns.last_sleep_sync ? 'Dernière nuit reçue ' + ago(ns.last_sleep_sync) : 'Aucune nuit reçue', ns && fresh(ns.last_sleep_sync, 2), 'data-guide="sleepGuide"'],
+  ];
+  $('sSetup').innerHTML = rows.map(([e, t, d, ok, attr]) =>
+    '<button class="mrow" type="button" ' + attr + '><span class="e">' + e + '</span><span class="m"><b>' + t + '</b><small>' + d + '</small></span>' +
+    '<span class="st ' + (ok ? 'ok' : 'todo') + '">' + (ok ? '✓ OK' : 'À vérifier') + '</span></button>').join('');
+  if (st) $('sumSoiree').textContent = 'Insta ' + st.insta_quota_min + ' min · lecture ' + st.reading_goal_min + ' min · mode ' + st.mode + (st.remind_enabled ? ' · rappels ' + st.remind_after_min + '/' + st.remind_every_min + ' min' : '');
+  if (ns) {
+    const c = (m) => m == null ? 'libre' : String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+    const h = Math.floor(ns.sleep_goal_min / 60), mm = ns.sleep_goal_min % 60;
+    $('sumNuits').textContent = 'Lever ' + c(ns.wake_week_m) + ' en semaine, ' + c(ns.wake_weekend_m) + ' le week-end · ' + h + ' h' + (mm ? ' ' + String(mm).padStart(2, '0') : '') + ' de sommeil';
+  }
+  if (mo) $('sumArgent').textContent = mo.budget != null ? 'Budget ' + Math.round(+mo.budget).toLocaleString('fr-FR') + ' € par mois' : 'Pas de budget défini';
+  $('sumNotif').textContent = data ? (data.push_devices > 0 ? data.push_devices + ' appareil' + (data.push_devices > 1 ? 's' : '') + ' abonné' + (data.push_devices > 1 ? 's' : '') : 'Pas encore activées') : '…';
+  $('sumCompte').textContent = (session && session.user && session.user.email) || 'Connecté';
 }
 
 let saveTimer = null, savePending = false;
@@ -445,7 +477,16 @@ function wire() {
   });
 
   document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => tab(b.dataset.tab)));
-  document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => { tab(b.dataset.goto); const g = $(b.dataset.open || 'guide'); g.open = true; g.scrollIntoView({ block: 'start' }); }));
+  document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => {
+    tab(b.dataset.goto); const g = $(b.dataset.open || 'guide'); const pg = g.closest('.spage');
+    if (pg) sPage(pg.dataset.page); g.open = true; g.scrollIntoView({ block: 'start' });
+  }));
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-spage],[data-back],[data-guide]'); if (!t) return;
+    if (t.dataset.back !== undefined) return sPage('');
+    if (t.dataset.guide) { sPage('setup'); const g = $(t.dataset.guide); if (g) { g.open = true; g.scrollIntoView({ block: 'start' }); } return; }
+    sPage(t.dataset.spage);
+  });
 
   document.querySelectorAll('.stepper[data-key]').forEach(el => {
     const [minus, , plus] = el.children;
