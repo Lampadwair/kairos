@@ -62,6 +62,11 @@ Deno.serve(async (req) => {
   try { subRows = (await rpc("kairos_due_sub_alerts", { p_secret: secret })) ?? []; }
   catch (e) { console.error("sub alerts", (e as Error).message); }
 
+  // Rappels du soir (module Nuits)
+  let bedRows: { r_kind: string; r_target: string; r_insta: boolean; r_before: number; r_endpoint: string; r_p256dh: string; r_auth: string }[] = [];
+  try { bedRows = (await rpc("kairos_due_bed", { p_secret: secret })) ?? []; }
+  catch (e) { console.error("bed", (e as Error).message); }
+
   let sent = 0, dropped = 0, failed = 0;
   const send = async (endpoint: string, p256dh: string, auth: string, payload: Record<string, unknown>, ttl: number) => {
     try {
@@ -73,6 +78,11 @@ Deno.serve(async (req) => {
       else { failed++; console.error("push", code, (e as Error).message); }
     }
   };
+  const bedText = (r: { r_kind: string; r_target: string; r_insta: boolean; r_before: number }) =>
+    r.r_kind === "before"
+      ? (r.r_insta ? `Dans ${r.r_before} min, ta cible de coucher (${r.r_target}). Un dernier chapitre plutôt qu'Insta ? 📖`
+                   : `Dans ${r.r_before} min, ta cible de coucher (${r.r_target}) 🌙`)
+      : (r.r_insta ? `${r.r_target}, l'heure de ta cible. On pose Insta ? 🌙` : `${r.r_target}, l'heure de ta cible. Bonne nuit 🌙`);
   const euros = (v: number) => Number(v).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
   const when = (d: number) => d <= 0 ? "aujourd'hui" : d === 1 ? "demain" : `dans ${d} jours`;
   await Promise.all([
@@ -80,6 +90,8 @@ Deno.serve(async (req) => {
       { title: "Kairos", body: message(r.r_minutes), url: `./?stop=1&m=${r.r_minutes}` }, 240)),
     ...subRows.map((r) => send(r.r_endpoint, r.r_p256dh, r.r_auth,
       { title: "Kairos · Abonnement", body: `${r.r_name} se renouvelle ${when(r.r_days)} (${euros(r.r_amount)}).`, url: "./?tab=argent", tag: `kairos-sub-${r.r_name}` }, 43200)),
+    ...bedRows.map((r) => send(r.r_endpoint, r.r_p256dh, r.r_auth,
+      { title: "Kairos · Nuit", body: bedText(r), url: "./?tab=nuits", tag: "kairos-bed" }, 1200)),
   ]);
-  return Response.json({ due: rows.length, subs: subRows.length, sent, dropped, failed });
+  return Response.json({ due: rows.length, subs: subRows.length, bed: bedRows.length, sent, dropped, failed });
 });

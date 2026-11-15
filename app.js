@@ -1,7 +1,7 @@
 // Kairos — module « Soirée choisie »
 // Pas de bibliothèque externe : on parle directement aux API REST de Supabase (Auth + RPC).
 'use strict';
-const APP_VER = '1.3.0';
+const APP_VER = '1.4.0';
 const CFG = window.KAIROS_CONFIG || {};
 const URL_BASE = (CFG.supabaseUrl || '').replace(/\/+$/, '');
 const KEY = CFG.supabaseKey || '';
@@ -120,7 +120,9 @@ function tab(name) {
   currentTab = name;
   $('t-tonight').classList.toggle('hidden', name !== 'tonight');
   $('t-money').classList.toggle('hidden', name !== 'money');
+  $('t-nights').classList.toggle('hidden', name !== 'nights');
   $('t-settings').classList.toggle('hidden', name !== 'settings');
+  if (name === 'nights' || name === 'settings') { if (typeof loadNights === 'function') loadNights(); }
   if (name === 'money' || (name === 'settings' && typeof money !== 'undefined' && !money)) { if (typeof loadMoney === 'function') loadMoney(); }
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
   window.scrollTo(0, 0);
@@ -376,8 +378,8 @@ function readStopParam() {
   if (q.get('stop') === '1') {
     showStop(+q.get('m') || '');
     history.replaceState(null, '', location.pathname);
-  } else if (q.get('tab') === 'argent') {
-    tab('money');
+  } else if (q.get('tab') === 'argent' || q.get('tab') === 'nuits') {
+    tab(q.get('tab') === 'argent' ? 'money' : 'nights');
     history.replaceState(null, '', location.pathname);
   }
 }
@@ -486,7 +488,7 @@ function wire() {
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flushSave();          // on quitte l'app : on enregistre tout de suite
-    else if (session) { load(); if (currentTab === 'money' && typeof loadMoney === 'function') loadMoney(); }
+    else if (session) { load(); if (currentTab === 'money' && typeof loadMoney === 'function') loadMoney(); if (currentTab === 'nights' && typeof loadNights === 'function') loadNights(); }
   });
   setInterval(() => { if (document.visibilityState === 'visible' && session) load(); }, 60000);
 

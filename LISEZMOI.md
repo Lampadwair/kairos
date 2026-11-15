@@ -91,6 +91,14 @@ Quand Insta reste ouvert longtemps (10 min par défaut), Kairos t'envoie une not
 - **Analyse (vue Analyse) :** rythme du mois face au budget avec projection de fin de mois, 6 derniers mois, top commerçants, habitudes (jours, moments, dépenses du soir).
 - **Côté serveur :** tout est créé par `supabase/argent.sql` puis `supabase/budget.sql`, tous deux déjà exécutés.
 
+## Module Nuits
+
+- Base : `supabase/nuits.sql` (à exécuter après `argent.sql`). Il étend aussi la tâche planifiée pour les rappels du soir.
+- Données : Garmin Connect → Apple Santé (catégorie **Sommeil**), puis le raccourci **Kairos Nuit** envoie les 7 dernières nuits à `kairos_sleep` chaque jour à 11 h (guide pas à pas dans Réglages → Nuits). Renvoyer plusieurs fois ne crée pas de doublon.
+- Coucher progressif : après 3 nuits, la cible part de ta médiane récente. Elle avance d'un palier (15 min par défaut) quand tu la tiens au moins 60 % des soirs sur une semaine, jusqu'au coucher visé à terme. Par défaut, seuls les soirs du dimanche au jeudi comptent.
+- Rappels du soir : une notification avant l'heure cible (30 min par défaut) puis à l'heure cible. Avec les notifications iPhone activées sur la Vivoactive 6, elles vibrent aussi au poignet.
+- Onglet Nuits : dernière nuit (phases), manque de sommeil sur 7 nuits, coucher moyen, cibles tenues, régularité du réveil, graphique des 14 nuits et comparaison avec tes soirées (Insta, lecture après 21 h).
+
 ## Sécurité
 
 - **Public, et c'est normal** : le code, l'URL Supabase et la clé « publishable ».

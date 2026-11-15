@@ -233,6 +233,24 @@ nav.tabs button.on{color:var(--lamp)}
 .momrow .p{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink2)}
 .catrow .v small{display:block;font-weight:400;font-size:11.5px;color:var(--muted);text-align:right}
 .catrow .bar.over i{background:var(--danger)}
+/* Nuits */
+.night-hero .lbl{font-size:14px;color:var(--ink2);font-weight:600}
+.night-hero .big{font-family:var(--serif);font-size:48px;line-height:1.05;margin:6px 0 4px;font-variant-numeric:tabular-nums}
+.night-hero .sub{font-size:13px;color:var(--muted)}
+.stages{display:flex;gap:2px;height:12px;border-radius:99px;overflow:hidden;margin-top:14px;background:var(--track)}
+.stages i{display:block;height:100%}
+.st-deep{background:var(--s-scroll)} .st-core{background:color-mix(in oklab, var(--s-scroll) 55%, var(--bg))}
+.st-rem{background:var(--s-read)} .st-awake{background:var(--muted)}
+.stlegend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12.5px;color:var(--ink2)}
+.stlegend span{display:inline-flex;align-items:center;gap:6px}
+.stlegend b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.stat .k{margin-bottom:6px}
+.stat .v{font-family:var(--serif);font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat .s{font-size:12.5px;color:var(--muted);margin-top:4px}
+.chart .tgt{stroke:var(--ink2);stroke-width:2;stroke-linecap:round}
+.insight{font-size:14px;color:var(--ink2);margin:0}
+.insight + .insight{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.insight b{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -466,6 +484,54 @@ nav.tabs button.on{color:var(--lamp)}
   </div>
 
   <!-- Onglet Réglages -->
+  <div id="t-nights" class="wrap hidden">
+    <div class="top">
+      <div class="brand"><svg><use href="#logo"/></svg><b>Nuits</b></div>
+      <div class="daylabel" id="nSync"></div>
+    </div>
+
+    <div class="empty hidden" id="nEmpty" style="margin-top:16px">
+      <b>Branche ta Garmin</b>
+      <p>Garmin Connect envoie tes nuits à l'app Santé, et un raccourci les transmet à Kairos chaque matin. 5 minutes, une seule fois.</p>
+      <button class="btn small" type="button" data-goto="settings" data-open="sleepGuide">Voir le guide</button>
+    </div>
+
+    <div class="card night-hero" style="margin-top:16px">
+      <div class="lbl" id="nTonightLbl">Ce soir</div>
+      <div class="big" id="nTonight">—</div>
+      <div class="sub" id="nTonightTxt"></div>
+    </div>
+
+    <div id="nBody">
+    <h2>Dernière nuit</h2>
+    <div class="card night-hero">
+      <div class="lbl" id="nLastLbl"></div>
+      <div class="big" id="nLastDur">—</div>
+      <div class="sub" id="nLastTxt"></div>
+      <div class="stages" id="nStages" role="img" aria-label="Phases de sommeil"></div>
+      <div class="stlegend" id="nStLegend"></div>
+    </div>
+
+    <h2>Sur 7 nuits</h2>
+    <div class="grid2">
+      <div class="card stat"><div class="k">Manque de sommeil</div><div class="v" id="nDebt">—</div><div class="s" id="nDebtS"></div></div>
+      <div class="card stat"><div class="k">Coucher moyen</div><div class="v" id="nBedAvg">—</div><div class="s" id="nBedAvgS"></div></div>
+      <div class="card stat"><div class="k">Cibles tenues</div><div class="v" id="nHit">—</div><div class="s" id="nHitS"></div></div>
+      <div class="card stat"><div class="k">Réveil</div><div class="v" id="nWake">—</div><div class="s" id="nWakeS"></div></div>
+    </div>
+
+    <h2>14 dernières nuits</h2>
+    <div class="card">
+      <div class="legend"><span><i class="dot scroll"></i>Sommeil</span><span><i style="width:12px;border-top:2px solid var(--ink2)"></i>Cible de coucher</span></div>
+      <div class="chart" id="nChart"><div class="tip" id="nTip"></div></div>
+      <details class="table"><summary>Voir en tableau</summary><div id="nTable"></div></details>
+    </div>
+
+    <h2>Ce qui joue sur ton coucher</h2>
+    <div class="card" id="nInsights"></div>
+    </div>
+  </div>
+
   <div id="t-settings" class="wrap hidden">
     <div class="top">
       <div class="brand"><svg><use href="#logo"/></svg><b>Réglages</b></div>
@@ -599,9 +665,61 @@ nav.tabs button.on{color:var(--lamp)}
       </div>
     </div>
 
-    <h2>Bientôt dans Kairos</h2>
-    <div class="card">
-      <div class="soon"><div class="e">🌙</div><div><b>Nuits</b><p>Ta fin de soirée qui vibre sur la Vivoactive 6, et ton sommeil croisé avec tes soirées.</p></div></div>
+    <h2>Nuits</h2>
+    <div class="card" id="nSettings">
+      <div class="row">
+        <div><div class="t">Sommeil visé</div><div class="d">Pour calculer ce qui te manque</div></div>
+        <div class="stepper" data-nkey="sleep_goal_min" data-min="360" data-max="600" data-step="15" data-fmt="dur">
+          <button type="button" aria-label="Moins">−</button><output>7 h 30</output><button type="button" aria-label="Plus">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Coucher visé à terme</div><div class="d">La cible avance par petits paliers jusque-là</div></div>
+        <div class="stepper" data-nkey="bed_final_m18" data-min="240" data-max="540" data-step="15" data-fmt="hhmi">
+          <button type="button" aria-label="Moins">−</button><output>00:00</output><button type="button" aria-label="Plus">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Palier</div><div class="d">Quand tu tiens ta cible 60 % des soirs sur une semaine</div></div>
+        <div class="stepper" data-nkey="bed_step_min" data-min="5" data-max="30" data-step="5" data-fmt="min">
+          <button type="button" aria-label="Moins">−</button><output>15 min</output><button type="button" aria-label="Plus">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Soirs concernés</div><div class="d" id="nScopeDesc"></div></div>
+        <div class="seg" id="nScopeSeg"><button type="button" data-v="semaine">Semaine</button><button type="button" data-v="tous">Tous</button></div>
+      </div>
+      <div class="row">
+        <div><div class="t">Rappels du soir</div><div class="d">Notification avant et à l'heure cible (aussi sur ta montre)</div></div>
+        <div class="seg" id="nRemindSeg"><button type="button" data-on="1">Oui</button><button type="button" data-on="0">Non</button></div>
+      </div>
+      <div class="row">
+        <div><div class="t">Premier rappel</div><div class="d">Avant l'heure cible</div></div>
+        <div class="stepper" data-nkey="bed_remind_before" data-min="10" data-max="90" data-step="5" data-fmt="min">
+          <button type="button" aria-label="Moins">−</button><output>30 min</output><button type="button" aria-label="Plus">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Repartir de mes nuits actuelles</div><div class="d">Recalcule la cible depuis ta moyenne récente</div></div>
+        <button class="btn ghost small" type="button" id="nRecal">Recalibrer</button>
+      </div>
+      <div class="saved" id="nSaved">Enregistré ✓</div>
+
+      <details class="guide" id="sleepGuide">
+        <summary>⌚ Envoyer tes nuits Garmin à Kairos</summary>
+        <ol class="steps">
+          <li><b>Garmin Connect</b> → <b>Plus</b> (≡) → <b>Paramètres</b> → <b>Applications connectées</b> → <b>Apple Santé</b> → active <b>Sommeil</b> (et autorise dans la fenêtre Santé). Synchronise ta montre, puis vérifie dans <b>Santé → Parcourir → Sommeil</b> que ta dernière nuit apparaît.</li>
+          <li>App <b>Raccourcis</b> → <b>+</b> → renomme-le <code>Kairos Nuit</code>. Ajoute <b>Rechercher des échantillons de santé</b> : touche <b>Type</b> → <b>Analyse du sommeil</b>. Ajoute un filtre <b>Date de début</b> <b>est dans les derniers</b> <code>7</code> <b>jours</b>. Trier par <b>Date de début</b>, ordre <b>Croissant</b>, Limite désactivée.</li>
+          <li>Ajoute <b>Répéter avec chaque élément</b> (sur les échantillons). Dedans, ajoute <b>Texte</b> et compose : <b>Élément répété</b> → touche la bulle → <b>Date de début</b>, tape <code>|</code>, <b>Élément répété</b> → <b>Date de fin</b>, tape <code>|</code>, <b>Élément répété</b> → <b>Valeur</b>.
+            <br>Touche chaque bulle de date → <b>Format de date</b> : <b>ISO 8601</b> et active <b>Inclure l'heure</b>.</li>
+          <li>Après <b>Fin de la répétition</b>, ajoute <b>Combiner le texte</b> : <b>Résultats de la répétition</b> avec <b>Nouvelle ligne</b>.</li>
+          <li>Ajoute <b>Obtenir le contenu de l'URL</b> avec cette adresse :
+            <div class="copy"><code id="cSleepUrl"></code><button class="btn ghost small" type="button" data-copy="cSleepUrl">Copier</button></div>
+            Déplie avec <b>›</b> : Méthode <b>POST</b> ; En-têtes : <code>apikey</code> = la même clé que pour le raccourci Kairos ; Corps <b>JSON</b> : <code>p_token</code> = ton jeton, <code>p_data</code> = <b>Texte combiné</b>.</li>
+          <li>Ajoute <b>Obtenir la valeur du dictionnaire</b> <code>message</code> dans <b>Contenu de l'URL</b>, puis <b>Afficher la notification</b> avec cette valeur. Teste avec ▶ : tu dois voir « Nuit : … ».</li>
+          <li>Onglet <b>Automatisation</b> → <b>+</b> → <b>Heure de la journée</b> → <code>11:00</code>, <b>Quotidien</b>, <b>Exécuter immédiatement</b>, désactive <b>M'avertir lors de l'exécution</b> → <b>Exécuter le raccourci</b> → <b>Kairos Nuit</b>. Tu peux aussi le lancer à la main quand tu veux : il ne crée jamais de doublon.</li>
+        </ol>
+      </details>
     </div>
 
     <h2>Compte</h2>
@@ -617,6 +735,8 @@ nav.tabs button.on{color:var(--lamp)}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Ce soir</button>
     <button type="button" data-tab="money">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M16 14.5h2"/></svg>Argent</button>
+    <button type="button" data-tab="nights">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18M5 18v-5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5M5 11V7"/><path d="M15.5 3.5l1 1-1 1M18.5 6l1 1-1 1"/></svg>Nuits</button>
     <button type="button" data-tab="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Réglages</button>
   </nav>
@@ -641,5 +761,6 @@ nav.tabs button.on{color:var(--lamp)}
 <script src="app.js"></script>
 <script src="money.js"></script>
 <script src="dash.js"></script>
+<script src="nights.js"></script>
 </body>
 </html>
