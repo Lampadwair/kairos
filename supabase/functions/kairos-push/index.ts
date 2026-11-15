@@ -40,6 +40,19 @@ Deno.serve(async (req) => {
       cfg = await rpc("kairos_push_config", { p_secret: secret });
     }
     webpush.setVapidDetails(APP_URL, cfg.pub, cfg.priv);
+    // Notification de test (appel manuel avec {"test": true})
+    const body = await req.json().catch(() => ({}));
+    if (body && body.test === true) {
+      const targets: { r_endpoint: string; r_p256dh: string; r_auth: string }[] = (await rpc("kairos_push_targets", { p_secret: secret })) ?? [];
+      const out = await Promise.all(targets.map(async (t) => {
+        try {
+          await webpush.sendNotification({ endpoint: t.r_endpoint, keys: { p256dh: t.r_p256dh, auth: t.r_auth } },
+            JSON.stringify({ title: "Kairos", body: "Test : les notifications Kairos arrivent bien ✓", url: "./" }), { TTL: 600, urgency: "high" });
+          return "ok";
+        } catch (e) { return `erreur ${(e as { statusCode?: number }).statusCode ?? ""} ${(e as Error).message}`.slice(0, 200); }
+      }));
+      return Response.json({ test: true, results: out });
+    }
     rows = (await rpc("kairos_due_reminders", { p_secret: secret })) ?? [];
   } catch (e) {
     return new Response(String((e as Error).message), { status: 403 });

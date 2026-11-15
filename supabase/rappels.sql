@@ -216,6 +216,18 @@ grant execute on function public.kairos_snooze_reminders()          to authentic
 grant execute on function public.kairos_save_settings(integer, integer, text, integer, boolean, integer, integer) to authenticated;
 grant execute on function public.kairos_dashboard(integer)          to authenticated;
 
+
+-- Pour la notification de test : tous les appareils abonnés
+create or replace function public.kairos_push_targets(p_secret text)
+returns table (r_endpoint text, r_p256dh text, r_auth text)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.kairos_check_secret(p_secret) then raise exception 'forbidden' using errcode = '42501'; end if;
+  return query select endpoint, p256dh, auth from kairos_push_subs;
+end $$;
+revoke all on function public.kairos_push_targets(text) from public;
+grant execute on function public.kairos_push_targets(text) to anon, authenticated;
+
 -- ---------- Tâche planifiée : chaque minute, réveille la fonction d'envoi s'il y a un rappel dû ----------
 create extension if not exists pg_net with schema extensions;
 create extension if not exists pg_cron with schema pg_catalog;
