@@ -81,6 +81,16 @@ Quand Insta reste ouvert longtemps (10 min par défaut), Kairos t'envoie une not
 - **Côté serveur** (déjà en place) : `supabase/rappels.sql` crée les tables et une tâche planifiée qui tourne chaque minute. La fonction `supabase/functions/kairos-push` envoie les notifications.
 - **Aucun secret à gérer** : la base tire elle-même son secret, et la fonction crée les clés de notification au premier lancement. Le tout est rangé dans la table `kairos_secrets`, invisible depuis l'extérieur.
 
+## Module Argent
+
+- **Paiements Apple Pay automatiques :** une automatisation **Wallet** (« Transaction » sur les anciens iOS) envoie le montant et le commerçant à `kairos_pay`. Le guide pas à pas est dans l'app, sous **Réglages → Argent**.
+- **Catégories :** elles sont devinées d'après le nom du commerçant. Quand tu en corriges une en cochant « Toujours classer… », Kairos s'en souvient pour ce commerçant.
+- **Paiements par carte physique ou en ligne :** ajoute-les à la main avec « + Ajouter une dépense ».
+- **Abonnements :** tu reçois une notification avant chaque renouvellement (3 jours avant par défaut, à partir de 10 h). Il faut que les notifications Kairos soient activées.
+- **Budget (vue Budget) :** tu pars de tes revenus, tu retires tes charges fixes (abonnements compris) et l'épargne visée, et tu obtiens ton reste à vivre. Tu le répartis ensuite en enveloppes par catégorie, avec une proposition calculée sur tes 3 derniers mois. Tu reçois une alerte quand une enveloppe atteint 80 % puis 100 %.
+- **Analyse (vue Analyse) :** rythme du mois face au budget avec projection de fin de mois, 6 derniers mois, top commerçants, habitudes (jours, moments, dépenses du soir).
+- **Côté serveur :** tout est créé par `supabase/argent.sql` puis `supabase/budget.sql`, tous deux déjà exécutés.
+
 ## Sécurité
 
 - **Public, et c'est normal** : le code, l'URL Supabase et la clé « publishable ».

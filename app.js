@@ -1,7 +1,7 @@
 // Kairos — module « Soirée choisie »
 // Pas de bibliothèque externe : on parle directement aux API REST de Supabase (Auth + RPC).
 'use strict';
-const APP_VER = '1.1.0';
+const APP_VER = '1.3.0';
 const CFG = window.KAIROS_CONFIG || {};
 const URL_BASE = (CFG.supabaseUrl || '').replace(/\/+$/, '');
 const KEY = CFG.supabaseKey || '';
@@ -115,9 +115,13 @@ async function loadAuthSettings() {
 function show(view) {
   for (const v of ['setup', 'auth', 'app']) $('v-' + v).classList.toggle('hidden', v !== view);
 }
+let currentTab = 'tonight';
 function tab(name) {
+  currentTab = name;
   $('t-tonight').classList.toggle('hidden', name !== 'tonight');
+  $('t-money').classList.toggle('hidden', name !== 'money');
   $('t-settings').classList.toggle('hidden', name !== 'settings');
+  if (name === 'money' || (name === 'settings' && typeof money !== 'undefined' && !money)) { if (typeof loadMoney === 'function') loadMoney(); }
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
   window.scrollTo(0, 0);
 }
@@ -263,7 +267,7 @@ function renderChart(days, quota) {
 function renderSettings() {
   if (!data) return;
   const st = data.settings;
-  document.querySelectorAll('.stepper').forEach(el => { el.querySelector('output').textContent = st[el.dataset.key] + ' min'; });
+  document.querySelectorAll('.stepper[data-key]').forEach(el => { el.querySelector('output').textContent = st[el.dataset.key] + ' min'; });
   document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === st.mode));
   $('modeDesc').textContent = st.mode === 'ferme' ? 'Ouvrir Insta ouvre Manga Pin' : 'Une notification te propose de lire';
   $('dayEnd').value = String(st.day_end_hour);
@@ -372,6 +376,9 @@ function readStopParam() {
   if (q.get('stop') === '1') {
     showStop(+q.get('m') || '');
     history.replaceState(null, '', location.pathname);
+  } else if (q.get('tab') === 'argent') {
+    tab('money');
+    history.replaceState(null, '', location.pathname);
   }
 }
 
@@ -436,9 +443,9 @@ function wire() {
   });
 
   document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => tab(b.dataset.tab)));
-  document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => { tab(b.dataset.goto); $('guide').open = true; }));
+  document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => { tab(b.dataset.goto); const g = $(b.dataset.open || 'guide'); g.open = true; g.scrollIntoView({ block: 'start' }); }));
 
-  document.querySelectorAll('.stepper').forEach(el => {
+  document.querySelectorAll('.stepper[data-key]').forEach(el => {
     const [minus, , plus] = el.children;
     const change = (dir) => {
       if (!data) return;
@@ -479,7 +486,7 @@ function wire() {
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flushSave();          // on quitte l'app : on enregistre tout de suite
-    else if (session) load();
+    else if (session) { load(); if (currentTab === 'money' && typeof loadMoney === 'function') loadMoney(); }
   });
   setInterval(() => { if (document.visibilityState === 'visible' && session) load(); }, 60000);
 
@@ -488,7 +495,10 @@ function wire() {
   $('stopRead').addEventListener('click', (e) => { e.preventDefault(); hideStop(); location.href = 'shortcuts://run-shortcut?name=' + encodeURIComponent(CFG.readShortcut || 'Kairos Lire'); });
   $('stopMore').addEventListener('click', hideStop);
   $('stopSnooze').addEventListener('click', async () => { hideStop(); try { await rpc('kairos_snooze_reminders'); load(); } catch (e) { alert(e.message); } });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'stop') showStop(e.data.m); });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'stop') showStop(e.data.m);
+    if (e.data && e.data.type === 'tab') tab(e.data.tab);
+  });
 
   $('ver').textContent = 'Kairos ' + APP_VER;
 }

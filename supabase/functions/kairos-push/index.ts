@@ -44,25 +44,29 @@ Deno.serve(async (req) => {
   } catch (e) {
     return new Response(String((e as Error).message), { status: 403 });
   }
+  // Alertes de renouvellement d'abonnement (module Argent)
+  let subRows: { r_name: string; r_amount: number; r_days: number; r_endpoint: string; r_p256dh: string; r_auth: string }[] = [];
+  try { subRows = (await rpc("kairos_due_sub_alerts", { p_secret: secret })) ?? []; }
+  catch (e) { console.error("sub alerts", (e as Error).message); }
+
   let sent = 0, dropped = 0, failed = 0;
-  await Promise.all(rows.map(async (r) => {
-    const payload = JSON.stringify({
-      title: "Kairos",
-      body: message(r.r_minutes),
-      url: `./?stop=1&m=${r.r_minutes}`,
-    });
+  const send = async (endpoint: string, p256dh: string, auth: string, payload: Record<string, unknown>, ttl: number) => {
     try {
-      await webpush.sendNotification(
-        { endpoint: r.r_endpoint, keys: { p256dh: r.r_p256dh, auth: r.r_auth } },
-        payload,
-        { TTL: 240, urgency: "high" },
-      );
+      await webpush.sendNotification({ endpoint, keys: { p256dh, auth } }, JSON.stringify(payload), { TTL: ttl, urgency: "high" });
       sent++;
     } catch (e) {
       const code = (e as { statusCode?: number }).statusCode;
-      if (code === 404 || code === 410) { await rpc("kairos_drop_push", { p_endpoint: r.r_endpoint, p_secret: secret }); dropped++; }
+      if (code === 404 || code === 410) { await rpc("kairos_drop_push", { p_endpoint: endpoint, p_secret: secret }); dropped++; }
       else { failed++; console.error("push", code, (e as Error).message); }
     }
-  }));
-  return Response.json({ due: rows.length, sent, dropped, failed });
+  };
+  const euros = (v: number) => Number(v).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+  const when = (d: number) => d <= 0 ? "aujourd'hui" : d === 1 ? "demain" : `dans ${d} jours`;
+  await Promise.all([
+    ...rows.map((r) => send(r.r_endpoint, r.r_p256dh, r.r_auth,
+      { title: "Kairos", body: message(r.r_minutes), url: `./?stop=1&m=${r.r_minutes}` }, 240)),
+    ...subRows.map((r) => send(r.r_endpoint, r.r_p256dh, r.r_auth,
+      { title: "Kairos · Abonnement", body: `${r.r_name} se renouvelle ${when(r.r_days)} (${euros(r.r_amount)}).`, url: "./?tab=argent", tag: `kairos-sub-${r.r_name}` }, 43200)),
+  ]);
+  return Response.json({ due: rows.length, subs: subRows.length, sent, dropped, failed });
 });

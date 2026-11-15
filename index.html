@@ -179,6 +179,60 @@ nav.tabs button.on{color:var(--lamp)}
 #v-stop .big small{font-family:var(--sans);font-size:20px;color:var(--muted);margin-left:6px}
 #v-stop p{color:var(--ink2);margin:6px 0 26px;font-size:17px}
 #v-stop .btn{margin-bottom:10px}
+/* Argent */
+.monthnav{display:flex;align-items:center;gap:6px}
+.monthnav button{border:1px solid var(--card-b);background:var(--track);width:32px;height:32px;border-radius:10px;font-size:16px}
+.monthnav span{font-size:14px;color:var(--ink2);min-width:96px;text-align:center;text-transform:capitalize}
+.money-hero .lbl{font-size:14px;color:var(--ink2);font-weight:600}
+.money-hero .big{font-family:var(--serif);font-size:48px;line-height:1.05;margin:6px 0 4px;font-variant-numeric:tabular-nums}
+.money-hero .sub{font-size:13px;color:var(--muted)}
+.bar.money i{background:var(--lamp)}
+.bar.money.over i{background:var(--danger)}
+.catrow{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.catrow:last-child{border-bottom:0}
+.catrow .e{font-size:18px;text-align:center}
+.catrow .n{font-size:14px;font-weight:600}
+.catrow .n small{font-weight:400;color:var(--muted);margin-left:6px}
+.catrow .bar{margin-top:6px;height:6px}
+.catrow .bar i{background:var(--lamp)}
+.catrow .v{font-variant-numeric:tabular-nums;font-weight:600;font-size:14px}
+.catrow.sel{background:var(--track);border-radius:10px}
+.listrow{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.listrow:last-child{border-bottom:0}
+.listrow .e{font-size:18px;text-align:center}
+.listrow .t{font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.listrow .d{font-size:12.5px;color:var(--muted)}
+.listrow .v{font-variant-numeric:tabular-nums;font-weight:650}
+.daysep{font-size:12px;font-weight:600;color:var(--muted);margin:14px 0 2px}
+.chip{display:inline-block;font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:99px;background:var(--track);color:var(--ink2);margin-left:6px}
+.chip.soon{color:var(--lamp)}
+.addrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.goal .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.goal .top b{font-size:15px}
+.goal .top span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.goal + .goal{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+/* Fenêtre d'édition */
+#sheet{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.45)}
+#sheet .panel{width:100%;max-width:560px;background:var(--bg2);border-radius:22px 22px 0 0;padding:18px 18px calc(env(safe-area-inset-bottom) + 18px);border:1px solid var(--card-b);max-height:88dvh;overflow:auto}
+#sheet h3{font-family:var(--serif);font-weight:500;font-size:24px;margin:2px 0 14px}
+#sheet .field input,#sheet .field select{display:block;width:100%;margin-top:6px;padding:12px;border-radius:12px;border:1px solid var(--card-b);background:var(--card);font-size:16px}
+#sheet .chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink2);margin:4px 0 12px}
+#sheet .actions{display:flex;gap:8px;margin-top:8px}
+#sheet .actions .btn{flex:1}
+.seg.wide{display:flex;width:100%}
+.seg.wide button{flex:1}
+.envrow{display:grid;grid-template-columns:26px 1fr 96px;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.envrow:last-child{border-bottom:0}
+.envrow .e{font-size:18px;text-align:center}
+.envrow .n{font-size:14px;font-weight:600}
+.envrow .h{font-size:12px;color:var(--muted)}
+.envrow input{width:100%;padding:9px 10px;border-radius:10px;border:1px solid var(--card-b);background:var(--track);font-size:15px;text-align:right;font-variant-numeric:tabular-nums}
+.momrow{display:grid;grid-template-columns:110px 1fr 46px;align-items:center;gap:10px;padding:6px 0;font-size:13.5px}
+.momrow .bar{margin:0;height:8px}
+.momrow .bar i{background:var(--s-read)}
+.momrow .p{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink2)}
+.catrow .v small{display:block;font-weight:400;font-size:11.5px;color:var(--muted);text-align:right}
+.catrow .bar.over i{background:var(--danger)}
 </style>
 </head>
 <body>
@@ -287,6 +341,130 @@ nav.tabs button.on{color:var(--lamp)}
 
   </div>
 
+  <!-- Onglet Argent -->
+  <div id="t-money" class="wrap hidden">
+    <div class="top">
+      <div class="brand"><svg><use href="#logo"/></svg><b>Argent</b></div>
+      <div class="monthnav"><button type="button" id="mPrev" aria-label="Mois précédent">‹</button><span id="mLabel"></span><button type="button" id="mNext" aria-label="Mois suivant">›</button></div>
+    </div>
+    <div class="seg wide" id="mViews" style="margin-top:14px">
+      <button type="button" data-v="month" class="on">Mois</button><button type="button" data-v="dash">Analyse</button><button type="button" data-v="budget">Budget</button>
+    </div>
+
+    <div id="mvMonth">
+
+    <div class="empty hidden" id="payEmpty" style="margin-top:16px">
+      <b>Branche Apple Pay</b>
+      <p>Une automatisation iPhone note chaque paiement Apple Pay tout seul. 5 minutes, une seule fois.</p>
+      <button class="btn small" type="button" data-goto="settings" data-open="payGuide">Voir le guide</button>
+    </div>
+
+    <div class="card money-hero" style="margin-top:16px">
+      <div class="lbl" id="mHeroLbl">Dépensé ce mois</div>
+      <div class="big" id="mTotal">0 €</div>
+      <div class="bar money" id="mBudgetBar" role="progressbar" aria-label="Dépenses par rapport au budget"><i style="width:0"></i></div>
+      <div class="sub" id="mBudgetTxt" style="margin-top:8px"></div>
+      <div class="sub" id="mCompare" style="margin-top:4px"></div>
+    </div>
+
+    <h2>Par catégorie</h2>
+    <div class="card" id="mCats"></div>
+
+    <h2>Abonnements</h2>
+    <div class="card">
+      <div class="sub" id="mSubsSum" style="font-size:13px;color:var(--muted);margin-bottom:4px"></div>
+      <div id="mSubs"></div>
+      <div class="addrow"><button class="btn ghost small" type="button" id="mAddSub">+ Ajouter un abonnement</button></div>
+    </div>
+
+    <h2>Objectif d'épargne</h2>
+    <div class="card">
+      <div id="mGoals"></div>
+      <div class="addrow"><button class="btn ghost small" type="button" id="mAddGoal">+ Nouvel objectif</button></div>
+    </div>
+
+    <h2 id="mTxTitle">Dépenses</h2>
+    <div class="card">
+      <div id="mTx"></div>
+      <div class="addrow"><button class="btn ghost small" type="button" id="mAddTx">+ Ajouter une dépense</button></div>
+    </div>
+    </div><!-- /mvMonth -->
+
+    <!-- Tableau de bord -->
+    <div id="mvDash" class="hidden">
+      <h2>Rythme du mois</h2>
+      <div class="card">
+        <div class="legend" id="dLegend">
+          <span><i class="dot read"></i>Ce mois</span>
+          <span><i class="dot scroll"></i>Mois dernier</span>
+          <span><i class="q"></i>Rythme du budget</span>
+        </div>
+        <div class="chart" id="dPace"><div class="tip" id="dPaceTip"></div></div>
+        <p class="note" id="dProj" style="margin:10px 0 0"></p>
+      </div>
+
+      <h2>6 derniers mois</h2>
+      <div class="card">
+        <div class="legend"><span><i class="dot read"></i>Dépenses</span><span><i class="q"></i>Budget actuel</span></div>
+        <div class="chart" id="d6m"><div class="tip" id="d6mTip"></div></div>
+        <p class="note" id="d6mTxt" style="margin:10px 0 0"></p>
+      </div>
+
+      <h2>Top commerçants</h2>
+      <div class="card">
+        <div class="seg" id="dTopSeg" style="display:inline-flex;margin-bottom:8px"><button type="button" data-p="month" class="on">Ce mois</button><button type="button" data-p="3m">3 mois</button></div>
+        <div id="dTop"></div>
+      </div>
+
+      <h2>Habitudes <span style="text-transform:none;letter-spacing:0;font-weight:500">· 3 derniers mois</span></h2>
+      <div class="card">
+        <div class="k" style="margin-bottom:4px">Par jour de la semaine</div>
+        <div class="chart" id="dWeek"><div class="tip" id="dWeekTip"></div></div>
+        <div class="k" style="margin:14px 0 4px">Par moment de la journée</div>
+        <div id="dMoments"></div>
+        <p class="note" id="dHabitTxt" style="margin:10px 0 0"></p>
+      </div>
+    </div>
+
+    <!-- Budget -->
+    <div id="mvBudget" class="hidden">
+      <p class="note" style="margin:16px 4px 0">Tes revenus, moins tes charges fixes et ton épargne, donnent ton <b>reste à vivre</b>. Tu le répartis ensuite en enveloppes par catégorie. Kairos t'alerte quand une enveloppe ou le total approche de la limite.</p>
+
+      <h2>Revenus</h2>
+      <div class="card">
+        <label class="field" style="margin:0"><span>Revenus nets par mois (€)</span><input id="bIncome" inputmode="decimal" placeholder="ex. 2 100"></label>
+      </div>
+
+      <h2>Charges fixes</h2>
+      <div class="card">
+        <div id="bFixed"></div>
+        <div class="listrow" style="cursor:default"><div class="e">🔁</div><div><div class="t">Abonnements</div><div class="d">Calculé depuis l'onglet Mois</div></div><div class="v" id="bSubs">0 €</div></div>
+        <div class="addrow"><button class="btn ghost small" type="button" id="bAddFixed">+ Ajouter une charge (loyer, forfait, assurance…)</button></div>
+      </div>
+
+      <h2>Épargne</h2>
+      <div class="card">
+        <label class="field" style="margin:0"><span>À mettre de côté chaque mois (€)</span><input id="bSavings" inputmode="decimal" placeholder="ex. 200"></label>
+        <p class="note" id="bSavingsHint" style="margin:8px 0 0"></p>
+      </div>
+
+      <div class="card money-hero" style="margin-top:22px">
+        <div class="lbl">Reste à vivre</div>
+        <div class="big" id="bLeft">—</div>
+        <div class="sub" id="bLeftTxt"></div>
+      </div>
+
+      <h2>Enveloppes</h2>
+      <div class="card">
+        <div class="addrow" style="margin:0 0 6px"><button class="btn ghost small" type="button" id="bFillAvg">✨ Proposer d'après mes dépenses</button></div>
+        <div id="bEnv"></div>
+        <div class="sub" id="bEnvSum" style="margin-top:10px;font-size:13px;color:var(--muted)"></div>
+      </div>
+
+      <div style="margin-top:18px"><button class="btn" type="button" id="bSave">Enregistrer mon budget</button><div class="lastsig" id="bSaved"></div></div>
+    </div>
+  </div>
+
   <!-- Onglet Réglages -->
   <div id="t-settings" class="wrap hidden">
     <div class="top">
@@ -345,6 +523,31 @@ nav.tabs button.on{color:var(--lamp)}
       </div>
     </div>
 
+    <h2>Argent</h2>
+    <div class="card">
+      <div class="row">
+        <div><div class="t">Budget du mois</div><div class="d">Alerte à 80 % et 100 %</div></div>
+        <div class="stepper" id="budgetStep">
+          <button type="button" aria-label="Moins">−</button><output id="budgetOut">—</output><button type="button" aria-label="Plus">+</button>
+        </div>
+      </div>
+      <details class="guide" id="payGuide">
+        <summary>💳 Noter les paiements Apple Pay automatiquement</summary>
+        <ol class="steps">
+          <li>App <b>Raccourcis</b> → onglet <b>Automatisation</b> → <b>+</b> → <b>Wallet</b> (« Transaction » sur les anciens iOS). Choisis ta ou tes cartes, puis <b>Exécuter immédiatement</b> → <b>Suivant</b> → <b>Nouvelle automatisation vide</b>.</li>
+          <li>Ajoute <b>Obtenir le contenu de l'URL</b> avec cette adresse :
+            <div class="copy"><code id="cPayUrl"></code><button class="btn ghost small" type="button" data-copy="cPayUrl">Copier</button></div>
+            Déplie avec <b>›</b> : Méthode <b>POST</b> ; En-têtes : <code>apikey</code> = la même clé que pour le raccourci Kairos ; Corps <b>JSON</b> avec trois champs Texte :
+            <br>• <code>p_token</code> = ton jeton (le même que pour le raccourci Kairos)
+            <br>• <code>p_amount</code> = touche le champ, choisis <b>Entrée du raccourci</b>, puis touche la bulle et choisis <b>Montant</b>
+            <br>• <code>p_merchant</code> = <b>Entrée du raccourci</b> → <b>Commerçant</b></li>
+          <li>(Facultatif) Pour les alertes de budget : ajoute <b>Obtenir la valeur du dictionnaire</b> <code>message</code> dans <b>Contenu de l'URL</b>, puis <b>Si</b> cette valeur <b>possède n'importe quelle valeur</b> → <b>Afficher la notification</b>.</li>
+          <li>Si rien n'arrive : <b>Réglages iPhone → Apps → Wallet</b>, active <b>Données cellulaires</b>.</li>
+          <li>Les paiements par carte physique ou en ligne ne passent pas par là : ajoute-les à la main dans l'onglet Argent, ça prend 5 secondes.</li>
+        </ol>
+      </details>
+    </div>
+
     <h2>Raccourcis iPhone</h2>
     <div class="card">
       <p class="note" style="margin-top:0">Ces trois valeurs servent dans le raccourci <b>Kairos</b>. Le jeton est personnel : il permet seulement d'ajouter des minutes à ton compte.</p>
@@ -398,7 +601,6 @@ nav.tabs button.on{color:var(--lamp)}
 
     <h2>Bientôt dans Kairos</h2>
     <div class="card">
-      <div class="soon"><div class="e">💸</div><div><b>Argent sans effort</b><p>Chaque paiement Apple Pay noté tout seul, tes abonnements et leurs renouvellements, ton objectif d'épargne.</p></div></div>
       <div class="soon"><div class="e">🌙</div><div><b>Nuits</b><p>Ta fin de soirée qui vibre sur la Vivoactive 6, et ton sommeil croisé avec tes soirées.</p></div></div>
     </div>
 
@@ -413,6 +615,8 @@ nav.tabs button.on{color:var(--lamp)}
   <nav class="tabs">
     <button type="button" class="on" data-tab="tonight">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Ce soir</button>
+    <button type="button" data-tab="money">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M16 14.5h2"/></svg>Argent</button>
     <button type="button" data-tab="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Réglages</button>
   </nav>
@@ -430,7 +634,12 @@ nav.tabs button.on{color:var(--lamp)}
   </div>
 </section>
 
+<!-- Fenêtre d'édition (dépense, abonnement, objectif) -->
+<section id="sheet" class="hidden" role="dialog" aria-modal="true"><form class="panel" id="sheetForm"></form></section>
+
 <script src="config.js"></script>
 <script src="app.js"></script>
+<script src="money.js"></script>
+<script src="dash.js"></script>
 </body>
 </html>
