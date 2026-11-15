@@ -73,6 +73,14 @@ Pas besoin de code pour ces réglages :
 4. **Préparer le module Nuits** : dans **Santé → profil → Apps et services → Garmin Connect**, active **Sommeil**. Kairos pourra alors croiser tes soirées avec tes nuits.
 5. **Pour Hepha** : la montre a des profils d'activité HIIT et renforcement. Tu peux y lancer tes Tabata au poignet.
 
+## Rappels pendant le scroll (notifications)
+
+Quand Insta reste ouvert longtemps (10 min par défaut), Kairos t'envoie une notification, puis une nouvelle toutes les 5 min. La toucher ouvre un écran avec trois choix : « Lire un chapitre », « Encore 5 min » ou « Plus de rappels ce soir ».
+
+- **Activer** : ouvre Kairos depuis son icône sur l'écran d'accueil, puis **Réglages → Rappels pendant le scroll → Activer les notifications**. iOS l'exige : depuis Safari, ça ne marche pas.
+- **Côté serveur** (déjà en place) : `supabase/rappels.sql` crée les tables et une tâche planifiée qui tourne chaque minute. La fonction `supabase/functions/kairos-push` envoie les notifications.
+- **Aucun secret à gérer** : la base tire elle-même son secret, et la fonction crée les clés de notification au premier lancement. Le tout est rangé dans la table `kairos_secrets`, invisible depuis l'extérieur.
+
 ## Sécurité
 
 - **Public, et c'est normal** : le code, l'URL Supabase et la clé « publishable ».

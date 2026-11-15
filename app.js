@@ -1,7 +1,7 @@
 // Kairos — module « Soirée choisie »
 // Pas de bibliothèque externe : on parle directement aux API REST de Supabase (Auth + RPC).
 'use strict';
-const APP_VER = '1.0.3';
+const APP_VER = '1.1.0';
 const CFG = window.KAIROS_CONFIG || {};
 const URL_BASE = (CFG.supabaseUrl || '').replace(/\/+$/, '');
 const KEY = CFG.supabaseKey || '';
@@ -272,6 +272,11 @@ function renderSettings() {
   $('cTok').textContent = st.token;
   $('accEmail').textContent = (session && session.user.email) || 'Connecté';
   $('accStats').textContent = data.events_count + ' signaux enregistrés';
+  document.querySelectorAll('#remindSeg button').forEach(b => b.classList.toggle('on', (b.dataset.on === '1') === !!st.remind_enabled));
+  $('remindDesc').textContent = !st.remind_enabled ? 'Désactivés'
+    : st.remind_snoozed ? 'En pause jusqu\'à la fin de la soirée'
+    : 'Après ' + st.remind_after_min + ' min, puis toutes les ' + st.remind_every_min + ' min';
+  renderPushState();
 }
 
 let saveTimer = null, savePending = false;
@@ -280,7 +285,8 @@ async function flushSave() {
   if (!savePending || !data) return;
   const st = data.settings;
   try {
-    await rpc('kairos_save_settings', { p_quota: st.insta_quota_min, p_goal: st.reading_goal_min, p_mode: st.mode, p_day_end: st.day_end_hour });
+    await rpc('kairos_save_settings', { p_quota: st.insta_quota_min, p_goal: st.reading_goal_min, p_mode: st.mode, p_day_end: st.day_end_hour,
+      p_remind: !!st.remind_enabled, p_remind_after: st.remind_after_min, p_remind_every: st.remind_every_min });
     savePending = false;
     const el = $('saved'); el.textContent = 'Enregistré ✓'; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 1400);
     load();
@@ -292,6 +298,81 @@ function queueSave() {
   renderSettings(); render();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flushSave, 350);
+}
+
+
+// ---------------------------------------------------------------- Notifications (rappels)
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+let pushSubscribed = false;
+
+function b64ToBytes(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+
+async function checkPush() {
+  try {
+    if (!pushSupported()) return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    pushSubscribed = !!sub && Notification.permission === 'granted';
+    if (sub && session) await sendSub(sub); // garde le serveur à jour
+  } catch {}
+  renderPushState();
+}
+
+async function sendSub(sub) {
+  const j = sub.toJSON();
+  await rpc('kairos_save_push', { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+}
+
+function renderPushState() {
+  const el = $('pushState'), btn = $('pushBtn');
+  if (!el) return;
+  let txt, showBtn = true;
+  if (!pushSupported() || !isStandalone()) {
+    txt = 'Ouvre Kairos depuis son <b>icône sur l\'écran d\'accueil</b> pour activer les notifications (iOS l\'exige).'; showBtn = false;
+  } else if (Notification.permission === 'denied') {
+    txt = 'Notifications refusées. Réactive-les dans <b>Réglages iPhone → Notifications → Kairos</b>.'; showBtn = false;
+  } else if (pushSubscribed) {
+    txt = '<b>Notifications actives</b> sur cet iPhone ✓'; showBtn = false;
+  } else {
+    txt = 'Notifications pas encore activées sur cet appareil.';
+  }
+  el.innerHTML = txt; btn.classList.toggle('hidden', !showBtn);
+}
+
+async function enablePush() {
+  const btn = $('pushBtn');
+  try {
+    btn.disabled = true; btn.textContent = '…';
+    const vapid = CFG.vapidPublicKey || await rpc('kairos_vapid_public');
+    if (!vapid) throw new Error('le serveur de notifications n\'est pas encore prêt');
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { renderPushState(); return; }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription() ||
+      await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(vapid) });
+    await sendSub(sub);
+    pushSubscribed = true; load();
+  } catch (e) { alert('Activation impossible : ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = '🔔 Activer les notifications sur cet iPhone'; renderPushState(); }
+}
+
+// ---------------------------------------------------------------- Écran « pause scroll »
+function showStop(minutes) {
+  $('stopMin').innerHTML = (minutes || '') + '<small>min</small>';
+  $('v-stop').classList.remove('hidden');
+}
+function hideStop() { $('v-stop').classList.add('hidden'); }
+function readStopParam() {
+  const q = new URLSearchParams(location.search);
+  if (q.get('stop') === '1') {
+    showStop(+q.get('m') || '');
+    history.replaceState(null, '', location.pathname);
+  }
 }
 
 // ---------------------------------------------------------------- Chargement
@@ -317,6 +398,8 @@ function start() {
   session = session || store.get(LS_SESSION);
   if (!session) { show('auth'); setAuthMode(authMode === 'signup' ? 'signup' : 'login'); loadAuthSettings(); return; }
   show('app');
+  readStopParam();
+  checkPush();
   data = store.get('kairos.cache');
   if (data) { render(); renderSettings(); }
   load();
@@ -399,6 +482,13 @@ function wire() {
     else if (session) load();
   });
   setInterval(() => { if (document.visibilityState === 'visible' && session) load(); }, 60000);
+
+  document.querySelectorAll('#remindSeg button').forEach(b => b.addEventListener('click', () => { if (data) { data.settings.remind_enabled = b.dataset.on === '1'; queueSave(); } }));
+  $('pushBtn').addEventListener('click', enablePush);
+  $('stopRead').addEventListener('click', (e) => { e.preventDefault(); hideStop(); location.href = 'shortcuts://run-shortcut?name=' + encodeURIComponent(CFG.readShortcut || 'Kairos Lire'); });
+  $('stopMore').addEventListener('click', hideStop);
+  $('stopSnooze').addEventListener('click', async () => { hideStop(); try { await rpc('kairos_snooze_reminders'); load(); } catch (e) { alert(e.message); } });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'stop') showStop(e.data.m); });
 
   $('ver').textContent = 'Kairos ' + APP_VER;
 }

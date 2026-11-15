@@ -169,6 +169,16 @@ nav.tabs button.on{color:var(--lamp)}
 .empty{border:1px dashed var(--card-b);border-radius:var(--r);padding:16px;margin-bottom:12px}
 .empty b{display:block;margin-bottom:4px}
 .empty p{margin:0 0 12px;color:var(--ink2);font-size:14px}
+/* Rappels + écran pause */
+.switch{display:flex;background:var(--track);border-radius:12px;padding:3px;flex:none}
+.pushstate{font-size:13px;color:var(--muted);margin:4px 0 10px}
+.pushstate b{color:var(--ink)}
+#v-stop{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:24px;background:color-mix(in oklab, var(--bg) 88%, transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+#v-stop .box{max-width:380px;width:100%;text-align:center}
+#v-stop .big{font-family:var(--serif);font-size:64px;line-height:1;margin:8px 0 4px}
+#v-stop .big small{font-family:var(--sans);font-size:20px;color:var(--muted);margin-left:6px}
+#v-stop p{color:var(--ink2);margin:6px 0 26px;font-size:17px}
+#v-stop .btn{margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -312,6 +322,29 @@ nav.tabs button.on{color:var(--lamp)}
       <div class="saved" id="saved">Enregistré ✓</div>
     </div>
 
+    <h2>Rappels pendant le scroll</h2>
+    <div class="card">
+      <p class="note" style="margin-top:0">Quand Insta reste ouvert longtemps, Kairos t'envoie une notification. En la touchant, tu peux passer à un chapitre ou reprendre 5 min.</p>
+      <div class="pushstate" id="pushState">…</div>
+      <button class="btn small" type="button" id="pushBtn">🔔 Activer les notifications sur cet iPhone</button>
+      <div class="row" style="margin-top:6px">
+        <div><div class="t">Rappels</div><div class="d" id="remindDesc"></div></div>
+        <div class="seg" id="remindSeg"><button type="button" data-on="1">Oui</button><button type="button" data-on="0">Non</button></div>
+      </div>
+      <div class="row">
+        <div><div class="t">Premier rappel</div><div class="d">Après tant de minutes d'affilée</div></div>
+        <div class="stepper" data-key="remind_after_min" data-min="5" data-max="60" data-step="5">
+          <button type="button" aria-label="Moins">−</button><output>10 min</output><button type="button" aria-label="Plus">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Puis toutes les</div><div class="d">Tant que la session continue</div></div>
+        <div class="stepper" data-key="remind_every_min" data-min="1" data-max="30" data-step="1">
+          <button type="button" aria-label="Moins">−</button><output>5 min</output><button type="button" aria-label="Plus">+</button>
+        </div>
+      </div>
+    </div>
+
     <h2>Raccourcis iPhone</h2>
     <div class="card">
       <p class="note" style="margin-top:0">Ces trois valeurs servent dans le raccourci <b>Kairos</b>. Le jeton est personnel : il permet seulement d'ajouter des minutes à ton compte.</p>
@@ -383,6 +416,18 @@ nav.tabs button.on{color:var(--lamp)}
     <button type="button" data-tab="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Réglages</button>
   </nav>
+</section>
+
+<!-- Écran « pause scroll » (ouvert depuis la notification) -->
+<section id="v-stop" class="hidden" role="dialog" aria-modal="true" aria-labelledby="stopTitle">
+  <div class="box">
+    <div class="logo"><svg style="width:56px;height:56px"><use href="#logo"/></svg></div>
+    <div class="big" id="stopMin">15<small>min</small></div>
+    <p id="stopTitle">d'affilée sur Insta. Tu continues, ou tu passes à quelque chose que tu as choisi ?</p>
+    <a class="btn" id="stopRead" href="#">📖 Lire un chapitre</a>
+    <button class="btn ghost" type="button" id="stopMore">Encore 5 min</button>
+    <button class="linkbtn" type="button" id="stopSnooze">Plus de rappels ce soir</button>
+  </div>
 </section>
 
 <script src="config.js"></script>
