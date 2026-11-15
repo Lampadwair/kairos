@@ -26,6 +26,7 @@ create table if not exists public.kairos_events (
   kind    text not null check (kind in ('open', 'close')),
   at      timestamptz not null default now()
 );
+alter table public.kairos_events add column if not exists inferred boolean not null default false;
 create index if not exists kairos_events_user_at on public.kairos_events (user_id, at);
 
 -- Aucun accès direct aux tables : tout passe par les fonctions ci-dessous,
@@ -136,6 +137,9 @@ declare
   act    text := 'none';
   msg    text := '';
   parts  text[];
+  last_a record;
+  t_prev timestamptz;
+  t0     timestamptz;
 begin
   select * into pr from kairos_profiles where token = trim(p_token);
   if not found then
@@ -159,6 +163,24 @@ begin
             end;
   if v_app is null or v_kind is null then
     raise exception 'p_app doit valoir insta ou lecture, p_event open ou close' using errcode = '22023';
+  end if;
+
+  -- iOS ne déclenche pas toujours « Est ouverte » quand on revient dans une app par le geste
+  -- en bas de l'écran, alors que « Est fermée » arrive bien. Si une fermeture arrive sans
+  -- ouverture, on reconstitue le début de session : au dernier signal (d'une autre app) des
+  -- 15 dernières minutes, sinon 5 min avant.
+  if v_kind = 'close' then
+    select e.kind, e.at into last_a from kairos_events e
+     where e.user_id = pr.user_id and e.app = v_app order by e.at desc, e.id desc limit 1;
+    if last_a is null or last_a.kind = 'close' or last_a.at < now() - interval '45 minutes' then
+      select max(e.at) into t_prev from kairos_events e
+       where e.user_id = pr.user_id and e.at > now() - interval '15 minutes';
+      t0 := coalesce(t_prev, now() - interval '5 minutes');
+      if now() - t0 > interval '5 seconds' then
+        insert into kairos_events (user_id, app, kind, at, inferred)
+        values (pr.user_id, v_app, 'open', t0 + interval '1 second', true);
+      end if;
+    end if;
   end if;
 
   -- Garde-fous : pas de doublon à 3 s près, 500 événements max sur 24 h.
