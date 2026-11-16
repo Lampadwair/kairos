@@ -809,8 +809,10 @@ h1.ptitle{font-family:var(--serif);font-weight:500;font-size:30px;margin:4px 0 6
           <li>Ajoute <b>Obtenir le contenu de l'URL</b> avec cette adresse :
             <div class="copy"><code id="cSleepUrl"></code><button class="btn ghost small" type="button" data-copy="cSleepUrl">Copier</button></div>
             Déplie avec <b>›</b> : Méthode <b>POST</b> ; En-têtes : <code>apikey</code> = la même clé que pour le raccourci Kairos ; Corps <b>JSON</b> : <code>p_token</code> = ton jeton, <code>p_data</code> = <b>Texte combiné</b>.</li>
-          <li>Ajoute <b>Obtenir la valeur du dictionnaire</b> <code>message</code> dans <b>Contenu de l'URL</b>, puis <b>Afficher la notification</b> avec cette valeur. Teste avec ▶ : tu dois voir « Nuit : … ».</li>
-          <li>Onglet <b>Automatisation</b> → <b>+</b> → <b>Heure de la journée</b> → <code>11:00</code>, <b>Quotidien</b>, <b>Exécuter immédiatement</b>, désactive <b>M'avertir lors de l'exécution</b> → <b>Exécuter le raccourci</b> → <b>Kairos Nuit</b>. Tu peux aussi le lancer à la main quand tu veux : il ne crée jamais de doublon.</li>
+          <li>Ajoute <b>Obtenir la valeur du dictionnaire</b> <code>message</code> dans <b>Contenu de l'URL</b>, puis <b>Si</b> <b>Valeur du dictionnaire</b> <b>possède n'importe quelle valeur</b> → dedans, <b>Afficher la notification</b> avec cette valeur.</li>
+          <li>Dans le corps JSON, ajoute un champ <b>Booléen</b> : <code>p_quiet</code> = <b>Vrai</b>. Kairos ne t'enverra un message que s'il y a une nouvelle nuit.</li>
+          <li>Onglet <b>Automatisation</b> → <b>+</b> → <b>App</b> → choisis l'app que tu ouvres en premier le matin (Instagram, Discord…) → <b>Est ouverte</b>, <b>Exécuter immédiatement</b>, désactive <b>M'avertir lors de l'exécution</b> → <b>Exécuter le raccourci</b> → <b>Kairos Nuit</b> (désactive <b>Afficher pendant l'exécution</b>).
+            <br>Pourquoi pas une heure fixe ? iOS rend les données Santé illisibles tant que l'iPhone est verrouillé : une automatisation « 11:00 » qui tourne dans ta poche ne trouve rien. À l'ouverture d'une app, l'iPhone est forcément déverrouillé.</li>
         </ol>
       </details>
     </div>

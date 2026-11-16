@@ -155,19 +155,23 @@ begin
 end $$;
 
 -- ---------- Appelée par le raccourci « Kairos Nuit » ----------
-create or replace function public.kairos_sleep(p_token text, p_data text)
+-- p_quiet = true (appel depuis une automatisation fréquente) : pas de message si rien de nouveau.
+drop function if exists public.kairos_sleep(text, text);
+create or replace function public.kairos_sleep(p_token text, p_data text, p_quiet boolean default false)
 returns json language plpgsql volatile security definer set search_path = public as $$
 declare
-  pr kairos_profiles; r record; cnt integer := 0; last_n kairos_nights;
+  pr kairos_profiles; r record; cnt integer := 0; last_n kairos_nights; prev_n kairos_nights;
   debt integer; prog text; msg text; verdict text := '';
 begin
   select * into pr from kairos_profiles where token = trim(p_token);
   if not found then raise exception 'Jeton Kairos inconnu' using errcode = '28000'; end if;
   if length(coalesce(p_data, '')) > 400000 then raise exception 'Trop de données' using errcode = '22023'; end if;
   if coalesce(trim(p_data), '') = '' then
+    if p_quiet then return json_build_object('ok', true, 'nights', 0); end if;
     return json_build_object('ok', true, 'nights', 0,
-      'message', 'Aucune nuit trouvée dans Santé. Vérifie que Garmin Connect partage « Sommeil » avec Santé.');
+      'message', 'Santé n''a renvoyé aucune nuit. iPhone verrouillé (Santé est alors illisible) ou montre pas encore synchronisée ?');
   end if;
+  select * into prev_n from kairos_nights where user_id = pr.user_id order by night desc limit 1;
 
   for r in
     with smp as (
@@ -214,12 +218,16 @@ begin
 
   update kairos_profiles set last_sleep_sync = now() where user_id = pr.user_id;
   if cnt = 0 then
+    if p_quiet then return json_build_object('ok', true, 'nights', 0); end if;
     return json_build_object('ok', true, 'nights', 0,
       'message', 'Pas de nuit complète trouvée (moins de 2 h 30 de sommeil). Ta montre s''est-elle synchronisée ?');
   end if;
 
   prog := kairos_bed_progress(pr.user_id);
   select * into last_n from kairos_nights where user_id = pr.user_id order by night desc limit 1;
+  if p_quiet and prog is null and prev_n.night = last_n.night and prev_n.wake_at = last_n.wake_at then
+    return json_build_object('ok', true, 'nights', cnt);  -- rien de nouveau : pas de notification
+  end if;
   select sum(pr.sleep_goal_min - asleep_min) into debt
   from kairos_nights where user_id = pr.user_id and night > last_n.night - 7;
 
@@ -371,9 +379,9 @@ revoke all on function public.kairos_sleep_parse(text)      from public, anon, a
 revoke all on function public.kairos_bed_progress(uuid)     from public, anon, authenticated;
 revoke all on function public.kairos_bed_due()              from public, anon, authenticated;
 revoke all on function public.kairos_any_bed_due()          from public, anon, authenticated;
-revoke all on function public.kairos_sleep(text, text)      from public;
+revoke all on function public.kairos_sleep(text, text, boolean) from public;
 revoke all on function public.kairos_due_bed(text)          from public;
-grant execute on function public.kairos_sleep(text, text)   to anon, authenticated;
+grant execute on function public.kairos_sleep(text, text, boolean) to anon, authenticated;
 grant execute on function public.kairos_due_bed(text)       to anon, authenticated;
 revoke all on function public.kairos_nights_dash(integer)   from public, anon;
 revoke all on function public.kairos_nights_settings(integer, integer, boolean, integer, integer, integer, boolean) from public, anon;
