@@ -62,10 +62,14 @@ Deno.serve(async (req) => {
   try { subRows = (await rpc("kairos_due_sub_alerts", { p_secret: secret })) ?? []; }
   catch (e) { console.error("sub alerts", (e as Error).message); }
 
-  // Rappels du soir (module Nuits)
-  let bedRows: { r_kind: string; r_target: string; r_wake: string | null; r_sleep_min: number | null; r_insta: boolean; r_before: number; r_endpoint: string; r_p256dh: string; r_auth: string }[] = [];
+  // Rappels du soir et repère de lever (module Nuits)
+  type Bed = { r_kind: string; r_target: string; r_bed: string; r_wake: string | null; r_sleep_min: number | null; r_adjusted: boolean; r_insta: boolean; r_before: number; r_endpoint: string; r_p256dh: string; r_auth: string };
+  let bedRows: Bed[] = [];
   try { bedRows = (await rpc("kairos_due_bed", { p_secret: secret })) ?? []; }
   catch (e) { console.error("bed", (e as Error).message); }
+  let anchorRows: { r_anchor: string; r_endpoint: string; r_p256dh: string; r_auth: string }[] = [];
+  try { anchorRows = (await rpc("kairos_due_anchor", { p_secret: secret })) ?? []; }
+  catch (e) { console.error("anchor", (e as Error).message); }
 
   let sent = 0, dropped = 0, failed = 0;
   const send = async (endpoint: string, p256dh: string, auth: string, payload: Record<string, unknown>, ttl: number) => {
@@ -79,12 +83,12 @@ Deno.serve(async (req) => {
     }
   };
   const dur = (m: number) => m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}`;
-  const bedText = (r: { r_kind: string; r_target: string; r_wake: string | null; r_sleep_min: number | null; r_insta: boolean; r_before: number }) => {
+  const bedText = (r: Bed) => {
     const wake = r.r_wake && r.r_sleep_min != null ? ` Réveil ${r.r_wake} : ${dur(r.r_sleep_min)} de sommeil possible.` : "";
+    const early = r.r_adjusted ? " (cible avancée : réveil plus tôt demain)" : "";
     return r.r_kind === "before"
-      ? (r.r_insta ? `Dans ${r.r_before} min, ta cible de coucher (${r.r_target}). Un dernier chapitre plutôt qu'Insta ? 📖${wake}`
-                   : `Dans ${r.r_before} min, ta cible de coucher (${r.r_target}) 🌙${wake}`)
-      : (r.r_insta ? `${r.r_target}, l'heure de ta cible. On pose Insta ? 🌙${wake}` : `${r.r_target}, l'heure de ta cible. Bonne nuit 🌙${wake}`);
+      ? `Dans ${r.r_before} min, au lit (${r.r_bed}) pour t'endormir vers ${r.r_target}${early}.${r.r_insta ? " Un dernier chapitre plutôt qu'Insta ? 📖" : " 🌙"}${wake}`
+      : `${r.r_bed} : c'est l'heure d'aller au lit${early}.${r.r_insta ? " On pose Insta ? 🌙" : " Bonne nuit 🌙"}${wake}`;
   };
   const euros = (v: number) => Number(v).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
   const when = (d: number) => d <= 0 ? "aujourd'hui" : d === 1 ? "demain" : `dans ${d} jours`;
@@ -95,6 +99,8 @@ Deno.serve(async (req) => {
       { title: "Kairos · Abonnement", body: `${r.r_name} se renouvelle ${when(r.r_days)} (${euros(r.r_amount)}).`, url: "./?tab=argent", tag: `kairos-sub-${r.r_name}` }, 43200)),
     ...bedRows.map((r) => send(r.r_endpoint, r.r_p256dh, r.r_auth,
       { title: "Kairos · Nuit", body: bedText(r), url: "./?tab=nuits", tag: "kairos-bed" }, 1200)),
+    ...anchorRows.map((r) => send(r.r_endpoint, r.r_p256dh, r.r_auth,
+      { title: "Kairos · Réveil", body: `${r.r_anchor} : ton repère de lever des jours libres ☀️ Debout maintenant, et lundi sera plus facile.`, url: "./?tab=nuits", tag: "kairos-anchor" }, 1800)),
   ]);
-  return Response.json({ due: rows.length, subs: subRows.length, bed: bedRows.length, sent, dropped, failed });
+  return Response.json({ due: rows.length, subs: subRows.length, bed: bedRows.length, anchor: anchorRows.length, sent, dropped, failed });
 });

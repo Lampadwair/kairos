@@ -285,6 +285,8 @@ h1.ptitle{font-family:var(--serif);font-weight:500;font-size:30px;margin:4px 0 6
 .wkgrid button.free .t{color:var(--muted);font-weight:500}
 .wkgrid button.mod{border-color:var(--lamp)}
 .wkgrid button.next{background:color-mix(in oklab, var(--lamp) 16%, var(--track))}
+.plan .advice{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:var(--track);font-size:14.5px;color:var(--ink)}
+.plan .advice:empty{display:none}
 </style>
 </head>
 <body>
@@ -549,10 +551,11 @@ h1.ptitle{font-family:var(--serif);font-weight:500;font-size:30px;margin:4px 0 6
       <h2>Ce soir</h2>
       <div class="card plan">
         <div class="duo">
-          <div><div class="k" id="nTonightLbl">Cible de coucher</div><b id="nTonight">—</b></div>
+          <div><div class="k" id="nTonightLbl">Au lit vers</div><b id="nTonight">—</b></div>
           <div><div class="k" id="nWakeLbl">Réveil demain</div><b id="nWakeTomorrow">—</b><span class="chip" id="nWakeChip"></span></div>
         </div>
         <div class="sub" id="nTonightTxt" style="margin-top:8px"></div>
+        <p class="advice" id="nAdvice"></p>
         <ul id="nPlan"></ul>
       </div>
 
@@ -571,6 +574,8 @@ h1.ptitle{font-family:var(--serif);font-weight:500;font-size:30px;margin:4px 0 6
         <div class="card stat"><div class="k">Endormissement moyen</div><div class="v" id="nBedAvg">—</div><div class="s" id="nBedAvgS"></div></div>
         <div class="card stat"><div class="k">Cibles tenues</div><div class="v" id="nHit">—</div><div class="s" id="nHitS"></div></div>
         <div class="card stat"><div class="k">Réveil en semaine</div><div class="v" id="nWake">—</div><div class="s" id="nWakeS"></div></div>
+        <div class="card stat"><div class="k">Repère des jours libres</div><div class="v" id="nAnchor">—</div><div class="s" id="nAnchorS"></div></div>
+        <div class="card stat"><div class="k">Délai d'endormissement</div><div class="v" id="nLat">—</div><div class="s" id="nLatS"></div></div>
       </div>
 
       <h2 id="nChartH">Tes dernières nuits</h2>
@@ -691,11 +696,17 @@ h1.ptitle{font-family:var(--serif);font-weight:500;font-size:30px;margin:4px 0 6
         </div>
       </div>
       <div class="row">
-        <div><div class="t">Coucher visé à terme</div><div class="d" id="nFinalDesc"></div></div>
+        <div><div class="t">Repère de lever, jours libres</div><div class="d">« Debout avant » sans alarme : un rappel seulement si ton téléphone n'a pas bougé</div></div>
+        <div class="stepper" data-nkey="wake_anchor_m" data-min="360" data-max="780" data-step="15" data-fmt="anchor">
+          <button type="button" aria-label="Plus tôt">−</button><output>10:00</output><button type="button" aria-label="Plus tard">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div class="t">Endormissement visé à terme</div><div class="d" id="nFinalDesc"></div></div>
         <output id="nFinal" style="font-weight:600;font-variant-numeric:tabular-nums">00:15</output>
       </div>
       <div class="row">
-        <div><div class="t">Palier</div><div class="d">Quand tu tiens ta cible 60 % des soirs sur une semaine</div></div>
+        <div><div class="t">Palier</div><div class="d">Quand tu tiens ta cible 60 % des soirs d'une semaine. Doublé après 2 paliers réussis d'affilée, recule d'un pas après une semaine ratée</div></div>
         <div class="stepper" data-nkey="bed_step_min" data-min="5" data-max="30" data-step="5" data-fmt="min">
           <button type="button" aria-label="Moins">−</button><output>15 min</output><button type="button" aria-label="Plus">+</button>
         </div>
