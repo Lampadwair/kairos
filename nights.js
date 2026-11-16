@@ -22,45 +22,37 @@ async function loadNights() {
   } catch (e) { if (!nights) { nights = store.get('kairos.nights'); if (nights) { renderNights(); renderNightSettings(); } } }
 }
 
+let nView = 'today';
+function setNightView(v) {
+  nView = v;
+  document.querySelectorAll('#nViews button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  $('nvToday').classList.toggle('hidden', v !== 'today');
+  $('nvTrends').classList.toggle('hidden', v !== 'trends');
+}
+
 function renderNights() {
   const d = nights; if (!d) return;
   const st = d.settings, list = d.nights || [], ev = d.tonight.night;
   const by = {}; list.forEach(n => by[n.night] = n);
 
-  // Synchro
   if (st.last_sleep_sync) {
     const t = new Date(st.last_sleep_sync), today = new Date().toDateString() === t.toDateString();
     $('nSync').textContent = 'Synchro ' + (today ? t.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : 'le ' + t.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }));
   } else $('nSync').textContent = '';
   $('nEmpty').classList.toggle('hidden', list.length > 0);
-  $('nBody').classList.toggle('hidden', list.length === 0);
+  $('nLastWrap').classList.toggle('hidden', list.length === 0);
+  if (!list.length && nView === 'trends') setNightView('today');
+  $('nViews').classList.toggle('hidden', list.length === 0);
 
-  // Ce soir
-  const wd = dOf(ev).toLocaleDateString('fr-FR', { weekday: 'long' });
-  $('nTonightLbl').textContent = 'Ce soir';
-  if (st.bed_target_m18 == null) {
-    $('nTonight').textContent = 'On observe';
-    $('nTonightTxt').textContent = list.length
-      ? 'Encore ' + Math.max(0, 3 - list.filter(n => n.night > addDays(ev, -15)).length) + ' nuit(s) et Kairos fixera une première cible de coucher, partie de tes habitudes actuelles.'
-      : 'Dès 3 nuits reçues, Kairos fixera une première cible de coucher, partie de tes habitudes actuelles.';
-  } else if (d.tonight.applies) {
-    $('nTonightLbl').textContent = 'Cible de coucher ce soir';
-    $('nTonight').textContent = d.tonight.target;
-    const since = st.bed_target_since ? dOf(st.bed_target_since).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
-    const parts = [];
-    if (st.bed_remind) parts.push('Rappel à ' + m18(st.bed_target_m18 - st.bed_remind_before));
-    parts.push(st.bed_target_m18 <= st.bed_final_m18 ? 'Objectif ' + m18(st.bed_final_m18) + ' atteint 🎉' : 'Palier depuis le ' + since + ', objectif ' + m18(st.bed_final_m18));
-    $('nTonightTxt').textContent = parts.join(' · ');
-  } else {
-    $('nTonight').textContent = 'Soirée libre';
-    $('nTonightTxt').textContent = 'Pas de réveil prévu demain, donc pas de cible ce ' + wd + '. Tu peux changer ça dans « Tes levers ».';
-  }
-  renderPlan(d);
+  renderTonight(d);
   if (!list.length) return;
 
   // Dernière nuit
   const last = list[list.length - 1];
-  $('nLastLbl').textContent = 'Nuit du ' + dOf(last.night).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }) + ' au ' + dOf(addDays(last.night, 1)).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const fresh = last.night >= addDays(ev, -1);
+  $('nLastLbl').textContent = (fresh ? '' : '⚠️ Pas de données plus récentes · ') + 'Nuit du ' +
+    dOf(last.night).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }) + ' au ' +
+    dOf(addDays(last.night, 1)).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
   $('nLastDur').textContent = durTxt(last.asleep);
   let verdict = '';
   if (last.target_m != null) {
@@ -69,8 +61,7 @@ function renderNights() {
   }
   $('nLastTxt').textContent = 'Endormi ' + last.bed + ' → réveil ' + last.wake + verdict;
   const stg = [['deep', 'Profond', 'st-deep'], ['core', 'Léger', 'st-core'], ['rem', 'Paradoxal', 'st-rem'], ['awake', 'Éveillé', 'st-awake']];
-  const tot = stg.reduce((s, [k]) => s + (last[k] || 0), 0);
-  if (tot > 0 && (last.deep + last.core + last.rem) > 0) {
+  if ((last.deep + last.core + last.rem) > 0) {
     $('nStages').classList.remove('hidden');
     $('nStages').innerHTML = stg.filter(([k]) => last[k] > 0).map(([k, , c]) => '<i class="' + c + '" style="flex:' + last[k] + '"></i>').join('');
     $('nStLegend').innerHTML = stg.filter(([k]) => last[k] > 0).map(([k, n, c]) => '<span><i class="dot ' + c + '"></i>' + n + ' <b>' + durTxt(last[k]) + '</b></span>').join('');
@@ -79,53 +70,106 @@ function renderNights() {
     $('nStLegend').innerHTML = '<span>Phases non transmises par Santé pour cette nuit.</span>';
   }
 
-  // Sur 7 nuits
+  // Tendances : 7 dernières nuits
   const in7 = list.filter(n => n.night >= addDays(ev, -7) && n.night < ev);
   const prev7 = list.filter(n => n.night >= addDays(ev, -14) && n.night < addDays(ev, -7));
   const debt = in7.reduce((s, n) => s + (st.sleep_goal_min - n.asleep), 0);
-  $('nDebt').textContent = in7.length ? (debt > 0 ? durTxt(debt) : 'Aucun ✓') : '—';
-  $('nDebtS').textContent = in7.length ? 'Objectif ' + durTxt(st.sleep_goal_min) + ', moyenne ' + durTxt(avg(in7.map(n => n.asleep))) + ' (' + in7.length + ' nuit' + (in7.length > 1 ? 's' : '') + ')' : 'Pas de nuit cette semaine';
-  const bedAvg = avg(in7.map(n => n.bed_m)), bedPrev = avg(prev7.map(n => n.bed_m));
+  $('nDebt').textContent = in7.length ? durTxt(avg(in7.map(n => n.asleep))) : '—';
+  $('nDebtS').textContent = !in7.length ? 'Pas de nuit cette semaine'
+    : 'Objectif ' + durTxt(st.sleep_goal_min) + (debt > 15 ? ' · manque ' + durTxt(debt) + ' sur ' + in7.length + ' nuit' + (in7.length > 1 ? 's' : '') : ' · objectif tenu ✓');
+  const bedAvg = avg(in7.map(n => n.bed_m)), bedPrev = prev7.length >= 3 ? avg(prev7.map(n => n.bed_m)) : null;
   $('nBedAvg').textContent = bedAvg == null ? '—' : m18(bedAvg);
-  $('nBedAvgS').textContent = bedPrev == null || bedAvg == null ? 'Endormissement' : (Math.abs(bedAvg - bedPrev) < 5 ? 'Comme la semaine d\'avant' : durTxt(bedAvg - bedPrev) + (bedAvg < bedPrev ? ' plus tôt' : ' plus tard') + ' que la semaine d\'avant');
-  const withT = in7.filter(n => n.target_m != null);
-  const hit = withT.filter(n => n.bed_m <= n.target_m + 15).length;
+  $('nBedAvgS').textContent = bedAvg == null ? '' : bedPrev == null ? 'Comparaison dès 2 semaines de données'
+    : Math.abs(bedAvg - bedPrev) < 5 ? 'Comme la semaine d\'avant' : durTxt(bedAvg - bedPrev) + (bedAvg < bedPrev ? ' plus tôt' : ' plus tard') + ' que la semaine d\'avant';
+  const withT = in7.filter(n => n.target_m != null), hit = withT.filter(n => n.bed_m <= n.target_m + 15).length;
   $('nHit').textContent = withT.length ? hit + ' / ' + withT.length : '—';
   $('nHitS').textContent = withT.length ? 'Soirs dans la cible (marge 15 min)' : (st.bed_target_m18 == null ? 'Cible pas encore fixée' : 'Pas encore de soir avec cible');
-  const wakes = list.filter(n => n.night >= addDays(ev, -14)).map(n => n.wake_m), wsd = sd(wakes);
+  const wk = list.filter(n => n.night >= addDays(ev, -14) && n.applies), wakes = wk.map(n => n.wake_m), wsd = sd(wakes);
   $('nWake').textContent = wakes.length ? m18(avg(wakes)) : '—';
-  $('nWakeS').textContent = wsd == null ? 'Heure moyenne' : 'Varie de ±' + Math.round(wsd) + ' min selon les jours';
+  $('nWakeS').textContent = !wakes.length ? 'Pas encore de jour de semaine' : wsd == null ? 'Moyenne (1 jour)' : 'Moyenne · varie de ±' + Math.round(wsd) + ' min';
 
-  renderNightChart(ev, by, st);
+  renderNightChart(ev, by, st, list);
   renderInsights(list, st, wsd, wakes);
 }
 
-function renderNightChart(ev, by, st) {
-  const slots = []; for (let i = 14; i >= 1; i--) slots.push(addDays(ev, -i));
+function renderTonight(d) {
+  const st = d.settings, days = d.days || [], t0 = days[0];
+  const wd = dOf(d.tonight.night).toLocaleDateString('fr-FR', { weekday: 'long' });
+  // Cible du soir
+  if (st.bed_target_m18 == null) { $('nTonight').textContent = '—'; $('nTonightLbl').textContent = 'Cible de coucher'; }
+  else if (d.tonight.applies) { $('nTonight').textContent = m18(st.bed_target_m18); $('nTonightLbl').textContent = 'Cible de coucher'; }
+  else { $('nTonight').textContent = 'Libre'; $('nTonightLbl').textContent = 'Ce ' + wd; }
+  // Réveil de demain
+  if (t0) {
+    $('nWakeTomorrow').textContent = clock(t0.wake);
+    $('nWakeLbl').textContent = 'Réveil ' + dOf(addDays(t0.night, 1)).toLocaleDateString('fr-FR', { weekday: 'long' });
+    $('nWakeChip').textContent = t0.wake == null ? 'pas de réveil' : t0.override ? 'modifié' : 'par défaut';
+  }
+  const sub = [];
+  if (st.bed_target_m18 == null) sub.push('La cible de coucher sera fixée dès 3 nuits reçues, à partir de tes habitudes.');
+  else if (d.tonight.applies) {
+    if (st.bed_remind) sub.push('Rappels à ' + m18(st.bed_target_m18 - st.bed_remind_before) + ' et ' + m18(st.bed_target_m18));
+    sub.push(st.bed_target_m18 <= st.bed_final_m18 ? 'objectif ' + m18(st.bed_final_m18) + ' atteint 🎉' : 'objectif à terme ' + m18(st.bed_final_m18));
+  } else sub.push('Pas de réveil prévu demain : pas de cible ce soir.');
+  $('nTonightTxt').textContent = cap(sub.join(' · '));
+
+  const items = [];
+  if (t0 && t0.wake != null) {
+    const goal = st.sleep_goal_min, asleepBy = t0.wake - goal, inBed = asleepBy - 15;
+    items.push('Pour <b>' + durTxt(goal) + '</b> de sommeil : au lit vers <b>' + clock(inBed) + '</b> (endormi à ' + clock(asleepBy) + ').');
+    if (st.bed_target_m18 != null && d.tonight.applies) {
+      const possible = ((t0.wake - (st.bed_target_m18 + 1080)) % 1440 + 1440) % 1440, gap = possible - goal;
+      items.push('En suivant ta cible : environ <b>' + durTxt(possible) + '</b> de sommeil' + (gap >= -15 ? ' ✓' : '') + '.');
+      if (gap < -60) items.push('Il manquerait ' + durTxt(-gap) + '. La cible avance doucement, mais te coucher plus tôt ce soir reste le mieux : chaque quart d\'heure compte.');
+    }
+  } else if (t0) {
+    items.push('Soirée libre. Pour ne pas décaler ta semaine, lève-toi quand même à moins d\'1 h de ton heure habituelle (' + clock(st.wake_week_m) + ').');
+  }
+  $('nPlan').innerHTML = items.map(x => '<li>' + x + '</li>').join('');
+  $('nPlan').classList.toggle('hidden', !items.length);
+
+  $('nDays').innerHTML = days.map((x, i) => {
+    const w = dOf(addDays(x.night, 1));
+    return '<button type="button" data-i="' + i + '" class="' + (x.wake == null ? 'free ' : '') + (x.override ? 'mod ' : '') + (i === 0 ? 'next' : '') + '">' +
+      '<span class="w">' + w.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '') + '</span><span class="d">' + w.getDate() + '</span>' +
+      '<span class="t">' + (x.wake == null ? 'libre' : clock(x.wake)) + '</span></button>';
+  }).join('');
+  $('nDays').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { const x = days[+b.dataset.i]; wakeSheet(addDays(x.night, 1), x); }));
+}
+
+function renderNightChart(ev, by, st, list) {
+  // De la première nuit connue (14 max) jusqu'à hier soir
+  const first = list.length ? list[0].night : addDays(ev, -7);
+  let start = first > addDays(ev, -14) ? first : addDays(ev, -14);
+  if (start > addDays(ev, -7)) start = addDays(ev, -7);
+  const slots = []; for (let s = start; s < ev; s = addDays(s, 1)) slots.push(s);
+  $('nChartH').textContent = slots.length + ' dernières nuits';
   const rows = slots.map(s => by[s]).filter(Boolean);
-  const H = 210, pl = 40, pb = 22, pt = 8, iw = W - pl - 6, ih = H - pb - pt;
+  const H = 220, pl = 40, pb = 30, pt = 8, iw = W - pl - 6, ih = H - pb - pt;
   const vals = rows.flatMap(n => [n.bed_m, n.wake_m, n.target_m].filter(v => v != null));
-  let lo = Math.floor((Math.min(...vals, 300) - 30) / 60) * 60, hi = Math.ceil((Math.max(...vals, 780) + 30) / 60) * 60;
-  const y = (m) => pt + (m - lo) / (hi - lo) * ih, cw = iw / slots.length, bw = Math.min(14, cw - 6), xc = (i) => pl + cw * i + cw / 2;
-  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Heures d\'endormissement et de réveil des 14 dernières nuits">';
+  const lo = Math.floor((Math.min(...vals, 300) - 30) / 60) * 60, hi = Math.ceil((Math.max(...vals, 780) + 30) / 60) * 60;
+  const y = (m) => pt + (m - lo) / (hi - lo) * ih, cw = iw / slots.length, bw = Math.min(16, cw - 6), xc = (i) => pl + cw * i + cw / 2;
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Heures d\'endormissement et de réveil">';
   const stepH = (hi - lo) > 720 ? 180 : 120;
   for (let m = Math.ceil(lo / stepH) * stepH; m <= hi; m += stepH) s += '<line class="grid" x1="' + pl + '" x2="' + (W - 6) + '" y1="' + y(m) + '" y2="' + y(m) + '"/><text x="' + (pl - 6) + '" y="' + (y(m) + 4) + '" text-anchor="end">' + m18(m).replace(':00', ' h') + '</text>';
   slots.forEach((iso, i) => {
-    const n = by[iso];
+    const n = by[iso], dd = dOf(iso);
     s += '<g data-i="' + i + '" class="col"><rect class="hl" x="' + (pl + cw * i + 1) + '" y="' + pt + '" width="' + (cw - 2) + '" height="' + ih + '" rx="6" fill="transparent"/>';
     if (n) {
-      const y0 = y(n.bed_m), y1 = y(n.wake_m), r = Math.min(4, bw / 2);
-      s += '<rect x="' + (xc(i) - bw / 2) + '" y="' + y0 + '" width="' + bw + '" height="' + Math.max(2, y1 - y0) + '" rx="' + r + '" style="fill:var(--s-scroll)"/>';
+      const y0 = y(n.bed_m), y1 = y(n.wake_m);
+      s += '<rect x="' + (xc(i) - bw / 2) + '" y="' + y0 + '" width="' + bw + '" height="' + Math.max(2, y1 - y0) + '" rx="' + Math.min(4, bw / 2) + '" style="fill:var(--s-scroll)"/>';
       if (n.target_m != null) s += '<line class="tgt" x1="' + (xc(i) - bw / 2 - 3) + '" x2="' + (xc(i) + bw / 2 + 3) + '" y1="' + y(n.target_m) + '" y2="' + y(n.target_m) + '"/>';
     }
-    if (i % 2 === 1 || slots.length <= 7) s += '<text x="' + xc(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + dOf(iso).toLocaleDateString('fr-FR', { weekday: 'narrow' }) + dOf(iso).getDate() + '</text>';
+    const show = slots.length <= 9 || i % 2 === (slots.length - 1) % 2;
+    if (show) s += '<text x="' + xc(i) + '" y="' + (H - 16) + '" text-anchor="middle">' + dd.toLocaleDateString('fr-FR', { weekday: 'short' }).slice(0, 2) + '</text>' +
+                   '<text x="' + xc(i) + '" y="' + (H - 3) + '" text-anchor="middle">' + dd.getDate() + '</text>';
     s += '</g>';
   });
   s += '</svg>';
   const box = $('nChart'), tip = $('nTip'); box.innerHTML = s; box.appendChild(tip);
   attachTip(box, tip, box.querySelector('svg'), slots.length, xc, (i) => {
     const n = by[slots[i]];
-    if (!n) return '<div class="d">' + nightDay(slots[i]) + '</div><div class="r">Pas de données</div>';
+    if (!n) return '<div class="d">Nuit du ' + nightDay(slots[i]) + '</div><div class="r">Pas de données</div>';
     return '<div class="d">Nuit du ' + nightDay(slots[i]) + '</div>' +
       '<div class="r"><i class="dot scroll"></i>Sommeil<b>' + durTxt(n.asleep) + '</b></div>' +
       '<div class="r">Endormi → réveil<b>' + n.bed + ' → ' + n.wake + '</b></div>' +
@@ -156,50 +200,10 @@ function renderInsights(list, st, wsd, wakes) {
   }
   if (wsd != null && wakes.length >= 4) {
     out.push(wsd > 45
-      ? '<p class="insight">Ton réveil varie de <b>±' + Math.round(wsd) + ' min</b> d\'un jour à l\'autre. Se lever à une heure proche chaque jour, week-end compris (à 1 h près), rend en général les réveils moins durs.</p>'
+      ? '<p class="insight">En semaine, ton réveil varie de <b>±' + Math.round(wsd) + ' min</b> d\'un jour à l\'autre. Se lever à une heure proche chaque jour, week-end compris (à 1 h près), rend en général les réveils moins durs.</p>'
       : '<p class="insight">Réveil plutôt régulier (<b>±' + Math.round(wsd) + ' min</b>) : bon point pour des réveils moins durs.</p>');
   }
   $('nInsights').innerHTML = out.join('');
-}
-
-// ---------------------------------------------------------------- Demain + levers
-function renderPlan(d) {
-  const st = d.settings, days = d.days || [], t0 = days[0];
-  if (!t0) return;
-  const wakeDay = addDays(t0.night, 1);
-  $('nPlanH').textContent = 'Demain, ' + dOf(wakeDay).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' });
-  const chip = t0.override ? '<span class="chip">modifié</span>' : '<span class="chip">par défaut</span>';
-  let h = '<div class="wk"><div><div class="k">Réveil</div><b>' + clock(t0.wake) + '</b>' + chip + '</div>' +
-          '<button class="btn ghost small" type="button" id="nWakeEdit">Changer</button></div>';
-  if (t0.wake == null) {
-    h += '<ul><li>Pas de réveil prévu : soirée libre.</li>' +
-         '<li>Pour ne pas décaler ta semaine, essaie quand même de te lever à moins d\'1 h de ton heure de semaine (' + clock(st.wake_week_m) + ').</li></ul>';
-  } else {
-    const goal = st.sleep_goal_min, asleepBy = t0.wake - goal, inBed = asleepBy - 15;
-    const items = ['Pour <b>' + durTxt(goal) + '</b> de sommeil : endormi à <b>' + clock(asleepBy) + '</b>, donc au lit vers <b>' + clock(inBed) + '</b>.'];
-    if (st.bed_target_m18 != null && d.tonight.applies) {
-      const tgtClock = st.bed_target_m18 + 18 * 60, possible = ((t0.wake - tgtClock) % 1440 + 1440) % 1440;
-      const gap = possible - goal;
-      items.push('Avec ta cible du soir (<b>' + m18(st.bed_target_m18) + '</b>) : environ <b>' + durTxt(possible) + '</b> de sommeil' + (gap >= -15 ? ' ✓' : '') + '.');
-      if (gap < -60) items.push('<span class="warn">C\'est ' + durTxt(-gap) + ' de moins que ton objectif. La cible avance doucement, mais rien ne t\'empêche d\'aller au lit plus tôt ce soir : chaque quart d\'heure compte.</span>');
-      if (st.bed_remind) items.push('Rappels à <b>' + m18(st.bed_target_m18 - st.bed_remind_before) + '</b> et <b>' + m18(st.bed_target_m18) + '</b>, sur l\'iPhone et la montre.');
-    } else if (st.bed_target_m18 == null) {
-      items.push('Ta cible de coucher sera fixée dès 3 nuits reçues.');
-    }
-    items.push('30 min avant d\'aller au lit, pose Insta : un chapitre à la place aide à décrocher.');
-    items.push('Au réveil, 10 min de lumière du jour (dehors ou près d\'une fenêtre) aident ton horloge à avancer.');
-    h += '<ul>' + items.map(x => '<li>' + x + '</li>').join('') + '</ul>';
-  }
-  $('nPlan').innerHTML = h;
-  $('nWakeEdit').onclick = () => wakeSheet(wakeDay, t0);
-
-  $('nDays').innerHTML = days.map((x, i) => {
-    const wd = addDays(x.night, 1);
-    return '<div class="listrow" data-i="' + i + '" style="grid-template-columns:1fr auto"><div><div class="t">' +
-      cap(dOf(wd).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })) + '</div>' +
-      '<div class="d">' + (x.override ? 'Modifié' : 'Par défaut') + '</div></div><div class="v">' + clock(x.wake) + '</div></div>';
-  }).join('');
-  $('nDays').querySelectorAll('.listrow').forEach(r => r.addEventListener('click', () => { const x = days[+r.dataset.i]; wakeSheet(addDays(x.night, 1), x); }));
 }
 
 function wakeSheet(day, x) {
@@ -249,6 +253,7 @@ function queueNightSave() {
 }
 
 (function wireNights() {
+  document.querySelectorAll('#nViews button').forEach(b => b.addEventListener('click', () => setNightView(b.dataset.v)));
   $('cSleepUrl').textContent = URL_BASE + '/rest/v1/rpc/kairos_sleep';
   document.querySelectorAll('.stepper[data-nkey]').forEach(el => {
     const [minus, , plus] = el.children, k = el.dataset.nkey, mn = +el.dataset.min, mx = +el.dataset.max, sp = +el.dataset.step;

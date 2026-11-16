@@ -272,6 +272,19 @@ h1.ptitle{font-family:var(--serif);font-weight:500;font-size:30px;margin:4px 0 6
 .plainlist{margin:6px 0 12px;padding-left:4px;list-style:none;color:var(--ink2);font-size:14.5px}
 .plainlist li{margin:4px 0}
 .card > details.guide:first-child{border-top:0;margin-top:0;padding-top:0}
+.plan .duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.plan .duo b{display:block;font-family:var(--serif);font-size:34px;font-weight:500;line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums}
+.plan .duo .chip{margin:6px 0 0}
+.plan .sub{font-size:13px;color:var(--muted)}
+.plan ul:empty{display:none}
+.wkgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.wkgrid button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;border-radius:12px;border:1px solid var(--card-b);background:var(--track);color:var(--ink);font-size:11.5px}
+.wkgrid button .w{color:var(--muted);font-weight:600;text-transform:capitalize}
+.wkgrid button .d{font-weight:600;font-size:13px}
+.wkgrid button .t{font-variant-numeric:tabular-nums;font-size:12px;font-weight:600}
+.wkgrid button.free .t{color:var(--muted);font-weight:500}
+.wkgrid button.mod{border-color:var(--lamp)}
+.wkgrid button.next{background:color-mix(in oklab, var(--lamp) 16%, var(--track))}
 </style>
 </head>
 <body>
@@ -510,6 +523,9 @@ h1.ptitle{font-family:var(--serif);font-weight:500;font-size:30px;margin:4px 0 6
       <div class="brand"><svg><use href="#logo"/></svg><b>Nuits</b></div>
       <div class="daylabel" id="nSync"></div>
     </div>
+    <div class="seg wide" id="nViews" style="margin-top:14px">
+      <button type="button" data-v="today" class="on">Aujourd'hui</button><button type="button" data-v="trends">Tendances</button>
+    </div>
 
     <div class="empty hidden" id="nEmpty" style="margin-top:16px">
       <b>Branche ta Garmin</b>
@@ -517,48 +533,56 @@ h1.ptitle{font-family:var(--serif);font-weight:500;font-size:30px;margin:4px 0 6
       <button class="btn small" type="button" data-goto="settings" data-open="sleepGuide">Voir le guide</button>
     </div>
 
-    <div class="card night-hero" style="margin-top:16px">
-      <div class="lbl" id="nTonightLbl">Ce soir</div>
-      <div class="big" id="nTonight">—</div>
-      <div class="sub" id="nTonightTxt"></div>
+    <!-- Vue « Aujourd'hui » -->
+    <div id="nvToday">
+      <div id="nLastWrap">
+        <h2>Dernière nuit</h2>
+        <div class="card night-hero">
+          <div class="lbl" id="nLastLbl"></div>
+          <div class="big" id="nLastDur">—</div>
+          <div class="sub" id="nLastTxt"></div>
+          <div class="stages" id="nStages" role="img" aria-label="Phases de sommeil"></div>
+          <div class="stlegend" id="nStLegend"></div>
+        </div>
+      </div>
+
+      <h2>Ce soir</h2>
+      <div class="card plan">
+        <div class="duo">
+          <div><div class="k" id="nTonightLbl">Cible de coucher</div><b id="nTonight">—</b></div>
+          <div><div class="k" id="nWakeLbl">Réveil demain</div><b id="nWakeTomorrow">—</b><span class="chip" id="nWakeChip"></span></div>
+        </div>
+        <div class="sub" id="nTonightTxt" style="margin-top:8px"></div>
+        <ul id="nPlan"></ul>
+      </div>
+
+      <h2>Tes levers</h2>
+      <div class="card">
+        <div class="wkgrid" id="nDays"></div>
+        <p class="note" style="margin:10px 0 0">Touche un jour pour changer l'heure ou le marquer libre.</p>
+      </div>
     </div>
 
-    <h2 id="nPlanH">Demain</h2>
-    <div class="card plan" id="nPlan"></div>
+    <!-- Vue « Tendances » -->
+    <div id="nvTrends" class="hidden">
+      <h2>Sur 7 nuits</h2>
+      <div class="grid2">
+        <div class="card stat"><div class="k">Sommeil moyen</div><div class="v" id="nDebt">—</div><div class="s" id="nDebtS"></div></div>
+        <div class="card stat"><div class="k">Endormissement moyen</div><div class="v" id="nBedAvg">—</div><div class="s" id="nBedAvgS"></div></div>
+        <div class="card stat"><div class="k">Cibles tenues</div><div class="v" id="nHit">—</div><div class="s" id="nHitS"></div></div>
+        <div class="card stat"><div class="k">Réveil en semaine</div><div class="v" id="nWake">—</div><div class="s" id="nWakeS"></div></div>
+      </div>
 
-    <h2>Tes levers</h2>
-    <div class="card">
-      <div id="nDays"></div>
-      <p class="note" style="margin:10px 0 0">Touche un jour pour changer l'heure ou le marquer libre. Par défaut : réglages → Nuits.</p>
-    </div>
+      <h2 id="nChartH">Tes dernières nuits</h2>
+      <div class="card">
+        <div class="legend"><span><i class="dot scroll"></i>De l'endormissement au réveil</span><span><i style="width:12px;border-top:2px solid var(--ink2)"></i>Cible de coucher</span></div>
+        <div class="chart" id="nChart"><div class="tip" id="nTip"></div></div>
+        <p class="note" style="margin:6px 0 0">Sous chaque barre : le soir où la nuit commence (lu 9 = nuit du lundi 9 au mardi 10). Touche une barre pour le détail.</p>
+        <details class="table"><summary>Voir en tableau</summary><div id="nTable"></div></details>
+      </div>
 
-    <div id="nBody">
-    <h2>Dernière nuit</h2>
-    <div class="card night-hero">
-      <div class="lbl" id="nLastLbl"></div>
-      <div class="big" id="nLastDur">—</div>
-      <div class="sub" id="nLastTxt"></div>
-      <div class="stages" id="nStages" role="img" aria-label="Phases de sommeil"></div>
-      <div class="stlegend" id="nStLegend"></div>
-    </div>
-
-    <h2>Sur 7 nuits</h2>
-    <div class="grid2">
-      <div class="card stat"><div class="k">Manque de sommeil</div><div class="v" id="nDebt">—</div><div class="s" id="nDebtS"></div></div>
-      <div class="card stat"><div class="k">Coucher moyen</div><div class="v" id="nBedAvg">—</div><div class="s" id="nBedAvgS"></div></div>
-      <div class="card stat"><div class="k">Cibles tenues</div><div class="v" id="nHit">—</div><div class="s" id="nHitS"></div></div>
-      <div class="card stat"><div class="k">Réveil</div><div class="v" id="nWake">—</div><div class="s" id="nWakeS"></div></div>
-    </div>
-
-    <h2>14 dernières nuits</h2>
-    <div class="card">
-      <div class="legend"><span><i class="dot scroll"></i>Sommeil</span><span><i style="width:12px;border-top:2px solid var(--ink2)"></i>Cible de coucher</span></div>
-      <div class="chart" id="nChart"><div class="tip" id="nTip"></div></div>
-      <details class="table"><summary>Voir en tableau</summary><div id="nTable"></div></details>
-    </div>
-
-    <h2>Ce qui joue sur ton coucher</h2>
-    <div class="card" id="nInsights"></div>
+      <h2>Ce qui joue sur ton coucher</h2>
+      <div class="card" id="nInsights"></div>
     </div>
   </div>
 
